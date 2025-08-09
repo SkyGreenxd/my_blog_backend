@@ -73,7 +73,7 @@ func (c *CategoryRepository) Update(ctx context.Context, category *domain.Catego
 	}
 
 	categoryModel := toCategoryModel(category)
-	result := c.DB.Model(&CategoryModel{}).Where("id = ?", categoryModel.ID).Updates(categoryModel)
+	result := c.DB.WithContext(ctx).Model(&CategoryModel{}).Where("id = ?", categoryModel.ID).Updates(categoryModel)
 	if err := e.WrapDBError(op, result.Error); err != nil {
 		return err
 	}
