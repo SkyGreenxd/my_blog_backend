@@ -5,7 +5,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 	"log"
-	"my_blog_backend/internal/entities"
+	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 )
 
@@ -19,7 +19,7 @@ func NewArticleRepository(db *gorm.DB) *ArticleRepository {
 	}
 }
 
-func (a *ArticleRepository) Create(ctx context.Context, article *entities.Article) error {
+func (a *ArticleRepository) Create(ctx context.Context, article *domain.Article) error {
 	const op = "UserRepository.Create"
 
 	userModel := toUserModel(user)
@@ -43,14 +43,14 @@ func (a *ArticleRepository) Create(ctx context.Context, article *entities.Articl
 	log.Printf("%s: user saved successfully", op)
 	return nil
 }
-func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*entities.Article, error)
-func (a *ArticleRepository) Update(ctx context.Context, article *entities.Article) error
+func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Article, error)
+func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) error
 func (a *ArticleRepository) Delete(ctx context.Context, id uint) error
-func (a *ArticleRepository) ListAll(ctx context.Context) ([]entities.Article, error)
-func (a *ArticleRepository) ListByAuthor(ctx context.Context, authorID uint) ([]entities.Article, error)
-func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint) ([]entities.Article, error)
+func (a *ArticleRepository) ListAll(ctx context.Context) ([]domain.Article, error)
+func (a *ArticleRepository) ListByAuthor(ctx context.Context, authorID uint) ([]domain.Article, error)
+func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint) ([]domain.Article, error)
 
-func toArticleModel(a *entities.Article) *ArticleModel {
+func toArticleModel(a *domain.Article) *ArticleModel {
 	return &ArticleModel{
 		ID:    a.ID,
 		Title: a.Title,

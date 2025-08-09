@@ -1,4 +1,4 @@
-package entities
+package domain
 
 import (
 	"my_blog_backend/pkg/e"

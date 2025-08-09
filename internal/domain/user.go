@@ -1,4 +1,4 @@
-package entities
+package domain
 
 import "time"
 
@@ -18,3 +18,11 @@ const (
 	RoleAdmin Role = "admin"
 	RoleUser  Role = "user"
 )
+
+func (u User) Validate() error {
+
+}
+
+func validateUser() error {
+
+}

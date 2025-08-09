@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 	"log"
-	"my_blog_backend/internal/entities"
+	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 )
 
@@ -20,7 +20,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	}
 }
 
-func (u UserRepository) Create(ctx context.Context, user *entities.User) error {
+func (u UserRepository) Create(ctx context.Context, user *domain.User) error {
 	const op = "UserRepository.Create"
 
 	userModel := toUserModel(user)
@@ -44,7 +44,7 @@ func (u UserRepository) Create(ctx context.Context, user *entities.User) error {
 	return nil
 }
 
-func (u UserRepository) GetById(ctx context.Context, id uint) (*entities.User, error) {
+func (u UserRepository) GetById(ctx context.Context, id uint) (*domain.User, error) {
 	const op = "UserRepository.GetById"
 
 	var userModel UserModel
@@ -60,7 +60,7 @@ func (u UserRepository) GetById(ctx context.Context, id uint) (*entities.User, e
 	return toUserEntity(&userModel), nil
 }
 
-func (u UserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
+func (u UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	const op = "UserRepository.GetByEmail"
 
 	var userModel UserModel
@@ -77,7 +77,7 @@ func (u UserRepository) GetByEmail(ctx context.Context, email string) (*entities
 	return toUserEntity(&userModel), nil
 }
 
-func toUserModel(u *entities.User) *UserModel {
+func toUserModel(u *domain.User) *UserModel {
 	return &UserModel{
 		ID:           u.ID,
 		CreatedAt:    u.CreatedAt,
@@ -89,8 +89,8 @@ func toUserModel(u *entities.User) *UserModel {
 	}
 }
 
-func toUserEntity(u *UserModel) *entities.User {
-	return &entities.User{
+func toUserEntity(u *UserModel) *domain.User {
+	return &domain.User{
 		ID:           u.ID,
 		CreatedAt:    u.CreatedAt,
 		UpdatedAt:    u.UpdatedAt,

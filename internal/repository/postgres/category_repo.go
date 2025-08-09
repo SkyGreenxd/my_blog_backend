@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 	"log"
-	"my_blog_backend/internal/entities"
+	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 )
 
@@ -20,7 +20,7 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 	}
 }
 
-func (c *CategoryRepository) Create(ctx context.Context, category *entities.Category) error {
+func (c *CategoryRepository) Create(ctx context.Context, category *domain.Category) error {
 	const op = "CategoryRepository.Create"
 
 	categoryModel := toCategoryModel(category)
@@ -44,7 +44,7 @@ func (c *CategoryRepository) Create(ctx context.Context, category *entities.Cate
 	return nil
 }
 
-func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*entities.Category, error) {
+func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Category, error) {
 	const op = "CategoryRepository.GetByID"
 
 	var categoryModel CategoryModel
@@ -61,7 +61,7 @@ func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*entities.Ca
 	return toCategoryEntity(&categoryModel), nil
 }
 
-func (c *CategoryRepository) Update(ctx context.Context, category *entities.Category) error {
+func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	const op = "CategoryRepository.Update"
 
 	if err := category.Validate(); err != nil {
@@ -98,7 +98,7 @@ func (c *CategoryRepository) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
-func (c *CategoryRepository) ListAll(ctx context.Context) ([]entities.Category, error) {
+func (c *CategoryRepository) ListAll(ctx context.Context) ([]domain.Category, error) {
 	const op = "CategoryRepository.ListAll"
 
 	var categoryModels []CategoryModel
@@ -107,7 +107,7 @@ func (c *CategoryRepository) ListAll(ctx context.Context) ([]entities.Category, 
 		return nil, err
 	}
 
-	var categories []entities.Category
+	var categories []domain.Category
 	for _, categoryModel := range categoryModels {
 		categories = append(categories, *toCategoryEntity(&categoryModel))
 	}
@@ -116,7 +116,7 @@ func (c *CategoryRepository) ListAll(ctx context.Context) ([]entities.Category, 
 	return categories, nil
 }
 
-func toCategoryModel(c *entities.Category) *CategoryModel {
+func toCategoryModel(c *domain.Category) *CategoryModel {
 	return &CategoryModel{
 		ID:        c.ID,
 		CreatedAt: c.CreatedAt,
@@ -125,8 +125,8 @@ func toCategoryModel(c *entities.Category) *CategoryModel {
 	}
 }
 
-func toCategoryEntity(c *CategoryModel) *entities.Category {
-	return &entities.Category{
+func toCategoryEntity(c *CategoryModel) *domain.Category {
+	return &domain.Category{
 		ID:        c.ID,
 		CreatedAt: c.CreatedAt,
 		UpdatedAt: c.UpdatedAt,

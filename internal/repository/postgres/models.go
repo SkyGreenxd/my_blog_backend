@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"my_blog_backend/internal/entities"
+	"my_blog_backend/internal/domain"
 	"time"
 )
 
@@ -9,10 +9,10 @@ type UserModel struct {
 	ID           uint `gorm:"primarykey"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	Role         entities.Role `gorm:"not null"`
-	Username     string        `gorm:"unique;not null"`
-	Email        string        `gorm:"unique;not null"`
-	PasswordHash string        `gorm:"not null"`
+	Role         domain.Role `gorm:"not null"`
+	Username     string      `gorm:"unique;not null"`
+	Email        string      `gorm:"unique;not null"`
+	PasswordHash string      `gorm:"not null"`
 }
 
 type ArticleModel struct {
