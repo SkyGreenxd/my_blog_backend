@@ -22,7 +22,7 @@ func (c *Category) Validate() error {
 }
 
 func validateCategoryName(name string) error {
-	if strings.TrimSpace(name) == "" {
+	if len(strings.TrimSpace(name)) == 0 {
 		return e.ErrCategoryNameEmpty
 	}
 
