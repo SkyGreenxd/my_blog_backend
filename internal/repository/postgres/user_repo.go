@@ -23,13 +23,17 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 func (u UserRepository) Create(ctx context.Context, user *domain.User) error {
 	const op = "UserRepository.Create"
 
+	if err := user.Validate(); err != nil {
+		return err
+	}
+
 	userModel := toUserModel(user)
 	result := u.DB.WithContext(ctx).Create(userModel)
 	if err := result.Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return e.ErrUserDublicate
+				return e.ErrUserDuplicate
 			}
 		}
 
