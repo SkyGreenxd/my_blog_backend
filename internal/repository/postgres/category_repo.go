@@ -23,13 +23,17 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 func (c *CategoryRepository) Create(ctx context.Context, category *domain.Category) error {
 	const op = "CategoryRepository.Create"
 
+	if err := category.Validate(); err != nil {
+		return err
+	}
+
 	categoryModel := toCategoryModel(category)
 	result := c.DB.WithContext(ctx).Create(categoryModel)
 	if err := result.Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return e.ErrCategoryDublicate
+				return e.ErrCategoryDuplicate
 			}
 		}
 
