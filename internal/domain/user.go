@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type User struct {
@@ -43,16 +44,17 @@ func (u *User) Validate() error {
 
 func validateUsername(username string) error {
 	username = strings.TrimSpace(username)
+	length := utf8.RuneCountInString(username)
 
 	if username == "" {
 		return e.ErrUsernameEmpty
 	}
 
-	if len(username) < 3 {
+	if length < 5 {
 		return e.ErrUsernameTooShort
 	}
 
-	if len(username) > 32 {
+	if length > 32 {
 		return e.ErrUsernameTooLong
 	}
 
@@ -69,12 +71,13 @@ func validateUsername(username string) error {
 
 func validateEmail(email string) error {
 	email = strings.TrimSpace(email)
+	length := utf8.RuneCountInString(email)
 
-	if len(email) < 3 {
+	if length < 3 {
 		return e.ErrEmailTooShort
 	}
 
-	if len(email) > 320 {
+	if length > 320 {
 		return e.ErrEmailTooLong
 	}
 

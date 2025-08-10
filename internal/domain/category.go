@@ -4,6 +4,7 @@ import (
 	"my_blog_backend/pkg/e"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Category struct {
@@ -22,12 +23,15 @@ func (c *Category) Validate() error {
 }
 
 func validateCategoryName(name string) error {
-	if len(strings.TrimSpace(name)) == 0 {
-		return e.ErrCategoryNameEmpty
+	name = strings.TrimSpace(name)
+	length := utf8.RuneCountInString(name)
+
+	if length < 2 {
+		return e.ErrCategoryTooShort
 	}
 
-	if len(name) > 128 {
-		return e.ErrCategoryNameLong
+	if length > 128 {
+		return e.ErrCategoryTooLong
 	}
 
 	return nil
