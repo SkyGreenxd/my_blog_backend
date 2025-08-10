@@ -16,6 +16,8 @@ var (
 	ErrUsernameTooLong      = errors.New("username is too long")
 	ErrUsernameInvalidChars = errors.New("username contains invalid characters")
 	ErrUsernameHasSpaces    = errors.New("username contains spaces")
+	ErrUsernameDuplicate    = errors.New("the user's username address already exists.")
+	ErrEmailDuplicate       = errors.New("the user's email address already exists.")
 	// role
 	ErrInvalidRole = errors.New("invalid role")
 	// email
@@ -24,15 +26,25 @@ var (
 	ErrEmailHasSpaces     = errors.New("email contains spaces")
 	ErrEmailTooShort      = errors.New("email is too short")
 	// password
-	ErrPasswordTooShort  = errors.New("password hash is too short")
-	ErrPasswordTooLong   = errors.New("password hash is too long")
-	ErrPasswordHasSpaces = errors.New("password hash contains spaces")
+	ErrPasswordTooShort  = errors.New("password is too short")
+	ErrPasswordTooLong   = errors.New("password is too long")
+	ErrPasswordHasSpaces = errors.New("password contains spaces")
 
 	// categories
 	ErrCategoryDuplicate = errors.New("category with such name already exists")
 	ErrCategoryNotFound  = errors.New("category not found")
-	ErrCategoryNameEmpty = errors.New("category name is empty")
-	ErrCategoryNameLong  = errors.New("category name is too long")
+	ErrCategoryTooShort  = errors.New("category name is empty")
+	ErrCategoryTooLong   = errors.New("category name is too long")
+	ErrCategoryInUse     = errors.New("category is already in use")
+
+	// articles
+	ErrTitleTooShort    = errors.New("title is too short")
+	ErrTitleTooLong     = errors.New("title is too long")
+	ErrTitleHasHTML     = errors.New("title has html")
+	ErrContentTooShort  = errors.New("content is too short")
+	ErrContentTooLong   = errors.New("content is too long")
+	ErrContentHasScript = errors.New("content has script")
+	ErrArticleNotFound  = errors.New("article not found")
 )
 
 func Wrap(msg string, err error) error {
