@@ -20,12 +20,8 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 	}
 }
 
-func (c *CategoryRepository) Create(ctx context.Context, category *domain.Category) error {
+func (c *CategoryRepository) Create(ctx context.Context, category *domain.Category) (*domain.Category, error) {
 	const op = "CategoryRepository.Create"
-
-	if err := category.Validate(); err != nil {
-		return err
-	}
 
 	categoryModel := toCategoryModel(category)
 	result := c.DB.WithContext(ctx).Create(categoryModel)
@@ -33,19 +29,15 @@ func (c *CategoryRepository) Create(ctx context.Context, category *domain.Catego
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return e.ErrCategoryDuplicate
+				return nil, e.ErrCategoryDuplicate
 			}
 		}
 
-		return e.WrapDBError(op, err)
+		return nil, e.WrapDBError(op, err)
 	}
 
-	category.ID = categoryModel.ID
-	category.CreatedAt = categoryModel.CreatedAt
-	category.UpdatedAt = categoryModel.UpdatedAt
-
 	log.Printf("%s: category saved successfully", op)
-	return nil
+	return toCategoryEntity(categoryModel), nil
 }
 
 func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Category, error) {
@@ -68,14 +60,10 @@ func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Cate
 func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	const op = "CategoryRepository.Update"
 
-	if err := category.Validate(); err != nil {
-		return err
-	}
-
 	categoryModel := toCategoryModel(category)
 	result := c.DB.WithContext(ctx).Model(&CategoryModel{}).Where("id = ?", categoryModel.ID).Updates(categoryModel)
-	if err := e.WrapDBError(op, result.Error); err != nil {
-		return err
+	if err := result.Error; err != nil {
+		return e.WrapDBError(op, err)
 	}
 
 	if result.RowsAffected == 0 {
@@ -90,8 +78,12 @@ func (c *CategoryRepository) Delete(ctx context.Context, id uint) error {
 	const op = "CategoryRepository.Delete"
 
 	result := c.DB.WithContext(ctx).Delete(&CategoryModel{}, id)
-	if err := e.WrapDBError(op, result.Error); err != nil {
-		return err
+	if err := result.Error; err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return e.ErrCategoryInUse
+		}
+		return e.WrapDBError(op, err)
 	}
 
 	if result.RowsAffected == 0 {
@@ -111,7 +103,7 @@ func (c *CategoryRepository) ListAll(ctx context.Context) ([]domain.Category, er
 		return nil, err
 	}
 
-	var categories []domain.Category
+	categories := make([]domain.Category, 0, len(categoryModels))
 	for _, categoryModel := range categoryModels {
 		categories = append(categories, *toCategoryEntity(&categoryModel))
 	}
