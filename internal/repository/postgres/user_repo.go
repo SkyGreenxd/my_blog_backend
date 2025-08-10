@@ -20,65 +20,40 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	}
 }
 
-func (u UserRepository) Create(ctx context.Context, user *domain.User) error {
+func (u *UserRepository) Create(ctx context.Context, user *domain.User) (*domain.User, error) {
 	const op = "UserRepository.Create"
 
-	if err := user.Validate(); err != nil {
-		return err
-	}
-
 	userModel := toUserModel(user)
-	result := u.DB.WithContext(ctx).Create(userModel)
-	if err := result.Error; err != nil {
+	if err := u.DB.WithContext(ctx).Create(userModel).Error; err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23505" {
-				return e.ErrUserDuplicate
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			switch pgErr.ConstraintName {
+			case "idx_username":
+				return nil, e.ErrUsernameDuplicate
+			case "idx_email":
+				return nil, e.ErrEmailDuplicate
+			default:
+				return nil, e.ErrUserDuplicate
 			}
-		}
-
-		return e.WrapDBError(op, err)
-	}
-
-	user.ID = userModel.ID
-	user.CreatedAt = userModel.CreatedAt
-	user.UpdatedAt = userModel.UpdatedAt
-
-	log.Printf("%s: user saved successfully", op)
-	return nil
-}
-
-func (u UserRepository) GetById(ctx context.Context, id uint) (*domain.User, error) {
-	const op = "UserRepository.GetById"
-
-	var userModel UserModel
-	result := u.DB.WithContext(ctx).First(&userModel, "id = ?", id)
-	if err := result.Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ErrUserNotFound
 		}
 
 		return nil, e.WrapDBError(op, err)
 	}
 
-	return toUserEntity(&userModel), nil
+	log.Printf("%s: user saved successfully", op)
+	return toUserEntity(userModel), nil
 }
 
-func (u UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (u *UserRepository) GetById(ctx context.Context, id uint) (*domain.User, error) {
+	const op = "UserRepository.GetById"
+	query := u.DB.WithContext(ctx).Where("id = ?", id)
+	return u.getUser(ctx, op, query)
+}
+
+func (u *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	const op = "UserRepository.GetByEmail"
-
-	var userModel UserModel
-	result := u.DB.WithContext(ctx).First(&userModel, "email = ?", email)
-	if err := result.Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ErrUserNotFound
-		}
-		wrappedErr := e.Wrap(op, err)
-		log.Print(wrappedErr)
-		return nil, wrappedErr
-	}
-
-	return toUserEntity(&userModel), nil
+	query := u.DB.WithContext(ctx).Where("email = ?", email)
+	return u.getUser(ctx, op, query)
 }
 
 func toUserModel(u *domain.User) *UserModel {
@@ -103,4 +78,19 @@ func toUserEntity(u *UserModel) *domain.User {
 		Email:        u.Email,
 		PasswordHash: u.PasswordHash,
 	}
+}
+
+func (u *UserRepository) getUser(ctx context.Context, op string, query *gorm.DB) (*domain.User, error) {
+	var userModel UserModel
+	result := query.First(&userModel)
+	if err := result.Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, e.ErrUserNotFound
+		}
+
+		return nil, e.WrapDBError(op, err)
+	}
+
+	log.Printf("%s: user get successfully", op)
+	return toUserEntity(&userModel), nil
 }
