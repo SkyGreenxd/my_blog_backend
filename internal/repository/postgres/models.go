@@ -10,8 +10,8 @@ type UserModel struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	Role         domain.Role `gorm:"not null"`
-	Username     string      `gorm:"unique;not null"`
-	Email        string      `gorm:"unique;not null"`
+	Username     string      `gorm:"uniqueIndex:idx_username;not null"`
+	Email        string      `gorm:"uniqueIndex:idx_email;not null"`
 	PasswordHash string      `gorm:"not null"`
 }
 
@@ -31,3 +31,5 @@ type CategoryModel struct {
 	UpdatedAt time.Time
 	Name      string `gorm:"unique;not null"`
 }
+
+// TODO: реализовать хуки AfterDelete/BeforeDelete
