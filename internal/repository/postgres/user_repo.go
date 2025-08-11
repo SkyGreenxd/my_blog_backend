@@ -56,6 +56,39 @@ func (u *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	return u.getUser(ctx, op, query)
 }
 
+func (u *UserRepository) Update(ctx context.Context, user *domain.User) error {
+	const op = "UserRepository.Update"
+
+	userModel := toUserModel(user)
+	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(userModel)
+	if err := result.Error; err != nil {
+		return e.WrapDBError(op, err)
+	}
+
+	if result.RowsAffected == 0 {
+		return e.ErrUserNotFound
+	}
+
+	log.Printf("%s: user updated successfully", op)
+	return nil
+}
+
+func (u *UserRepository) Delete(ctx context.Context, id uint) error {
+	const op = "UserRepository.Delete"
+
+	result := u.DB.WithContext(ctx).Delete(&UserModel{}, id)
+	if err := result.Error; err != nil {
+		return e.WrapDBError(op, err)
+	}
+
+	if result.RowsAffected == 0 {
+		return e.ErrUserNotFound
+	}
+
+	log.Printf("%s: user deleted successfully", op)
+	return nil
+}
+
 func toUserModel(u *domain.User) *UserModel {
 	return &UserModel{
 		ID:           u.ID,
