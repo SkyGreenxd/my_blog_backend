@@ -26,6 +26,10 @@ const (
 	RoleUser  Role = "user"
 )
 
+func (*User) TableName() string {
+	return "users"
+}
+
 func (u *User) Validate() error {
 	if err := validateUsername(u.Username); err != nil {
 		return err

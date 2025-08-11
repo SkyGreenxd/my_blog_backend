@@ -14,6 +14,10 @@ type Category struct {
 	Name      string
 }
 
+func (*Category) TableName() string {
+	return "categories"
+}
+
 func (c *Category) Validate() error {
 	if err := validateCategoryName(c.Name); err != nil {
 		return err

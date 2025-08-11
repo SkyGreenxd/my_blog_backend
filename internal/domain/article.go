@@ -17,6 +17,10 @@ type Article struct {
 	UpdatedAt  time.Time
 }
 
+func (*Article) TableName() string {
+	return "articles"
+}
+
 func (a *Article) Validate() error {
 	if err := validateTitle(a.Title); err != nil {
 		return err
