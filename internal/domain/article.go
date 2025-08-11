@@ -22,18 +22,18 @@ func (*Article) TableName() string {
 }
 
 func (a *Article) Validate() error {
-	if err := validateTitle(a.Title); err != nil {
+	if err := ValidateTitle(a.Title); err != nil {
 		return err
 	}
 
-	if err := validateContent(a.Content); err != nil {
+	if err := ValidateContent(a.Content); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validateTitle(title string) error {
+func ValidateTitle(title string) error {
 	title = strings.TrimSpace(title)
 	length := utf8.RuneCountInString(title)
 
@@ -52,7 +52,7 @@ func validateTitle(title string) error {
 	return nil
 }
 
-func validateContent(content string) error {
+func ValidateContent(content string) error {
 	content = strings.TrimSpace(content)
 	length := utf8.RuneCountInString(content)
 

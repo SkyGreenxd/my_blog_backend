@@ -19,14 +19,14 @@ func (*Category) TableName() string {
 }
 
 func (c *Category) Validate() error {
-	if err := validateCategoryName(c.Name); err != nil {
+	if err := ValidateCategoryName(c.Name); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validateCategoryName(name string) error {
+func ValidateCategoryName(name string) error {
 	name = strings.TrimSpace(name)
 	length := utf8.RuneCountInString(name)
 

@@ -31,11 +31,11 @@ func (*User) TableName() string {
 }
 
 func (u *User) Validate() error {
-	if err := validateUsername(u.Username); err != nil {
+	if err := ValidateUsername(u.Username); err != nil {
 		return err
 	}
 
-	if err := validateEmail(u.Email); err != nil {
+	if err := ValidateEmail(u.Email); err != nil {
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (u *User) Validate() error {
 	return nil
 }
 
-func validateUsername(username string) error {
+func ValidateUsername(username string) error {
 	username = strings.TrimSpace(username)
 	length := utf8.RuneCountInString(username)
 
@@ -73,7 +73,7 @@ func validateUsername(username string) error {
 	return nil
 }
 
-func validateEmail(email string) error {
+func ValidateEmail(email string) error {
 	email = strings.TrimSpace(email)
 	length := utf8.RuneCountInString(email)
 
