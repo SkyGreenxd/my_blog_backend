@@ -11,6 +11,7 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id uint) error
+	ExistsByEmailOrUsername(ctx context.Context, email, username string) error
 }
 
 type ArticleRepository interface {
