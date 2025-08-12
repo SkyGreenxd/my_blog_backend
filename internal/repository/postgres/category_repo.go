@@ -41,37 +41,30 @@ func (c *CategoryRepository) Create(ctx context.Context, category *domain.Catego
 }
 
 func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Category, error) {
-	const op = "CategoryRepository.GetByID"
+	const (
+		op      = "CategoryRepository.GetByID"
+		message = "category found successfully"
+	)
 
 	var categoryModel CategoryModel
 	result := c.DB.WithContext(ctx).First(&categoryModel, "id = ?", id)
-	if err := result.Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ErrCategoryNotFound
-		}
-
-		return nil, e.WrapDBError(op, err)
+	if err := checkGetQueryResult(result, op, message, e.ErrCategoryNotFound); err != nil {
+		return nil, err
 	}
 
-	log.Printf("%s: category found successfully", op)
 	return toCategoryEntity(&categoryModel), nil
 }
 
 func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
-	const op = "CategoryRepository.Update"
+	const (
+		op      = "CategoryRepository.Update"
+		message = "category updated successfully"
+	)
 
 	categoryModel := toCategoryModel(category)
 	result := c.DB.WithContext(ctx).Model(&CategoryModel{}).Where("id = ?", categoryModel.ID).Updates(categoryModel)
-	if err := result.Error; err != nil {
-		return e.WrapDBError(op, err)
-	}
 
-	if result.RowsAffected == 0 {
-		return e.ErrCategoryNotFound
-	}
-
-	log.Printf("%s: category updated successfully", op)
-	return nil
+	return checkChangeQueryResult(result, op, message, e.ErrCategoryNotFound)
 }
 
 func (c *CategoryRepository) Delete(ctx context.Context, id uint) error {

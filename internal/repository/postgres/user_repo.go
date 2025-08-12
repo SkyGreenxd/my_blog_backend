@@ -57,35 +57,55 @@ func (u *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 }
 
 func (u *UserRepository) Update(ctx context.Context, user *domain.User) error {
-	const op = "UserRepository.Update"
+	const (
+		op      = "UserRepository.Update"
+		message = "user updated successfully"
+	)
 
 	userModel := toUserModel(user)
 	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(userModel)
-	if err := result.Error; err != nil {
-		return e.WrapDBError(op, err)
-	}
 
-	if result.RowsAffected == 0 {
-		return e.ErrUserNotFound
-	}
-
-	log.Printf("%s: user updated successfully", op)
-	return nil
+	return checkChangeQueryResult(result, op, message, e.ErrUserNotFound)
 }
 
 func (u *UserRepository) Delete(ctx context.Context, id uint) error {
-	const op = "UserRepository.Delete"
+	const (
+		op      = "UserRepository.Delete"
+		message = "user deleted successfully"
+	)
 
 	result := u.DB.WithContext(ctx).Delete(&UserModel{}, id)
-	if err := result.Error; err != nil {
+	return checkChangeQueryResult(result, op, message, e.ErrUserNotFound)
+}
+
+func (u *UserRepository) ExistsByEmailOrUsername(ctx context.Context, email, username string) error {
+	const op = "UserRepository.ExistsByEmailOrUsername"
+
+	var foundUser struct {
+		Username string
+		Email    string
+	}
+
+	err := u.DB.WithContext(ctx).Model(&UserModel{}).
+		Select("username", "email").Where("email = ?", email).
+		Or("username = ?", username).First(&foundUser).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+
+	if err != nil {
 		return e.WrapDBError(op, err)
 	}
 
-	if result.RowsAffected == 0 {
-		return e.ErrUserNotFound
+	if foundUser.Username == username {
+		return e.ErrUsernameDuplicate
 	}
 
-	log.Printf("%s: user deleted successfully", op)
+	if foundUser.Email == email {
+		return e.ErrEmailDuplicate
+	}
+
 	return nil
 }
 
@@ -114,16 +134,11 @@ func toUserEntity(u *UserModel) *domain.User {
 }
 
 func (u *UserRepository) getUser(ctx context.Context, op string, query *gorm.DB) (*domain.User, error) {
+	const message = "user get successfully"
 	var userModel UserModel
 	result := query.First(&userModel)
-	if err := result.Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ErrUserNotFound
-		}
-
-		return nil, e.WrapDBError(op, err)
+	if err := checkGetQueryResult(result, op, message, e.ErrUserNotFound); err != nil {
+		return nil, err
 	}
-
-	log.Printf("%s: user get successfully", op)
 	return toUserEntity(&userModel), nil
 }
