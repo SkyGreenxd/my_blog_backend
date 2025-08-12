@@ -31,3 +31,10 @@ type CategoryRepository interface {
 	Delete(ctx context.Context, id uint) error
 	ListAll(ctx context.Context) ([]domain.Category, error)
 }
+
+type SessionRepository interface {
+	Create(ctx context.Context, session *domain.Session) (*domain.Session, error)
+	GetByID(ctx context.Context, id uint) (*domain.Session, error)
+	RevokeSession(ctx context.Context, id string) error
+	DeleteSession(ctx context.Context, id string) error
+}
