@@ -30,3 +30,16 @@ func Connect() (*PgDatabase, error) {
 
 	return &PgDatabase{db: db}, nil
 }
+
+func (pg *PgDatabase) Close() error {
+	sqlDb, err := pg.db.DB()
+	if err != nil {
+		return e.Wrap("failed to close db", err)
+	}
+
+	if err := sqlDb.Close(); err != nil {
+		return e.Wrap("failed to close db", err)
+	}
+
+	return nil
+}
