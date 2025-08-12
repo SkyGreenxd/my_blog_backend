@@ -16,7 +16,7 @@ var (
 	ErrUsernameTooLong      = errors.New("username is too long")
 	ErrUsernameInvalidChars = errors.New("username contains invalid characters")
 	ErrUsernameHasSpaces    = errors.New("username contains spaces")
-	ErrUsernameDuplicate    = errors.New("the user's username address already exists.")
+	ErrUsernameDuplicate    = errors.New("the user's username already exists.")
 	ErrEmailDuplicate       = errors.New("the user's email address already exists.")
 	// role
 	ErrInvalidRole = errors.New("invalid role")
@@ -45,6 +45,14 @@ var (
 	ErrContentTooLong   = errors.New("content is too long")
 	ErrContentHasScript = errors.New("content has script")
 	ErrArticleNotFound  = errors.New("article not found")
+
+	ErrMismatchedHashAndPassword = errors.New("password does not match hash")
+
+	// Sessions
+	ErrSessionRevoked            = errors.New("session revoked")
+	ErrSessionExpired            = errors.New("session expired")
+	ErrSessionTokenHashDuplicate = errors.New("token hash already exists")
+	ErrSessionNotFound           = errors.New("session not found")
 )
 
 func Wrap(msg string, err error) error {
