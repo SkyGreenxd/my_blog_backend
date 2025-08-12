@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"my_blog_backend/internal/domain"
 	"strconv"
 	"time"
 )
 
 type UserClaims struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	Email string      `json:"email"`
+	Role  domain.Role `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func NewUserClaims(userId uint, email, role string, duration time.Duration) (*UserClaims, error) {
+func NewUserClaims(userId uint, email string, role domain.Role, duration time.Duration) (*UserClaims, error) {
 	tokenId, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("error generating jwt ID: %w", err)

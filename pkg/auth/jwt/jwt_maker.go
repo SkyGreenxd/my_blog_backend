@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"log"
+	"my_blog_backend/internal/domain"
 	"my_blog_backend/internal/usecase"
 	"strconv"
 	"time"
@@ -21,7 +22,7 @@ func NewTokenManager(secretKey string, duration time.Duration) *TokenManager {
 	}
 }
 
-func (manager *TokenManager) Generate(id uint, email, role string) (string, error) {
+func (manager *TokenManager) Generate(id uint, email string, role domain.Role) (string, error) {
 	claims, err := NewUserClaims(id, email, role, manager.duration)
 	if err != nil {
 		log.Printf("error generating jwt: %v", err)

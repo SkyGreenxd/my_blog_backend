@@ -1,8 +1,10 @@
 package usecase
 
+import "my_blog_backend/internal/domain"
+
 type AuthPrincipal struct {
 	ID    uint
-	Role  string
+	Role  domain.Role
 	Email string
 }
 
