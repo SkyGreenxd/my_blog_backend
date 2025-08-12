@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"github.com/google/uuid"
 	"my_blog_backend/internal/domain"
 	"time"
 )
@@ -30,6 +31,15 @@ type CategoryModel struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string `gorm:"size:128;unique;not null"`
+}
+
+type SessionModel struct {
+	Id               uuid.UUID `gorm:"primarykey"`
+	UserId           uint      `gorm:"not null"`
+	RefreshTokenHash string    `gorm:"size:64;not null;unique"`
+	IsRevoked        bool      `gorm:"not null"`
+	CreatedAt        time.Time
+	ExpiresAt        time.Time
 }
 
 // TODO: реализовать хуки AfterDelete/BeforeDelete
