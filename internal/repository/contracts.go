@@ -35,6 +35,7 @@ type CategoryRepository interface {
 type SessionRepository interface {
 	Create(ctx context.Context, session *domain.Session) (*domain.Session, error)
 	GetByID(ctx context.Context, id uint) (*domain.Session, error)
+	GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error)
 	RevokeSession(ctx context.Context, id string) error
 	DeleteSession(ctx context.Context, id string) error
 }
