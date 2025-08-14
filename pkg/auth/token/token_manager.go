@@ -1,6 +1,9 @@
-package jwt
+package token
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"log"
@@ -22,25 +25,25 @@ func NewTokenManager(secretKey string, duration time.Duration) *TokenManager {
 	}
 }
 
-func (manager *TokenManager) Generate(id uint, email string, role domain.Role) (string, error) {
-	claims, err := NewUserClaims(id, email, role, manager.duration)
+func (manager *TokenManager) NewJWT(userID uint, email string, role domain.Role) (string, error) {
+	claims, err := NewUserClaims(userID, email, role, manager.duration)
 	if err != nil {
-		log.Printf("error generating jwt: %v", err)
+		log.Printf("error generating token: %v", err)
 		return "", err
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(manager.secretKey))
 	if err != nil {
-		log.Printf("error signing jwt: %v", err)
-		return "", fmt.Errorf("error signing jwt: %w", err)
+		log.Printf("error signing token: %v", err)
+		return "", fmt.Errorf("error signing token: %w", err)
 	}
 
-	log.Printf("generated jwt: %s", tokenString)
+	log.Printf("generated token: %s", tokenString)
 	return tokenString, nil
 }
 
-func (manager *TokenManager) Verify(tokenString string) (*usecase.AuthPrincipal, error) {
+func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.AuthPrincipal, error) {
 	claims := &UserClaims{}
 
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
@@ -53,17 +56,34 @@ func (manager *TokenManager) Verify(tokenString string) (*usecase.AuthPrincipal,
 		keyFunc, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 	)
 	if err != nil {
-		log.Printf("error parsing jwt: %v", err)
-		return nil, fmt.Errorf("error parsing jwt: %w", err)
+		log.Printf("error parsing token: %v", err)
+		return nil, fmt.Errorf("error parsing token: %w", err)
 	}
 
 	if !token.Valid {
-		log.Printf("invalid jwt: %v", err)
+		log.Printf("invalid token: %v", err)
 		return nil, fmt.Errorf("invalid token")
 	}
 
-	log.Printf("parsed jwt: %s", tokenString)
+	log.Printf("parsed token: %s", tokenString)
 	return claimsToAuthPrincipal(claims)
+}
+
+func (manager *TokenManager) NewRefreshToken() (string, string, error) {
+	b := make([]byte, 32) // 256 бит
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", "", err
+	}
+
+	token := base64.URLEncoding.EncodeToString(b)
+	hashed := manager.HashRefreshToken(token)
+	return token, hashed, nil
+}
+
+func (manager *TokenManager) HashRefreshToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return base64.URLEncoding.EncodeToString(hash[:])
 }
 
 func claimsToAuthPrincipal(claims *UserClaims) (*usecase.AuthPrincipal, error) {

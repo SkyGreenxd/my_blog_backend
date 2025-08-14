@@ -1,4 +1,4 @@
-package jwt
+package token
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ type UserClaims struct {
 func NewUserClaims(userId uint, email string, role domain.Role, duration time.Duration) (*UserClaims, error) {
 	tokenId, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("error generating jwt ID: %w", err)
+		return nil, fmt.Errorf("error generating token ID: %w", err)
 	}
 
 	return &UserClaims{
