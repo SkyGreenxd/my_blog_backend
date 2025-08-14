@@ -52,6 +52,9 @@ var (
 	ErrSessionExpired            = errors.New("session expired")
 	ErrSessionTokenHashDuplicate = errors.New("token hash already exists")
 	ErrSessionNotFound           = errors.New("session not found")
+
+	// Общие ошибки для сервиса
+	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
 func Wrap(msg string, err error) error {
