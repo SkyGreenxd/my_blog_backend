@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
-	"log"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 )
@@ -22,56 +21,53 @@ func NewSessionRepository(db *gorm.DB) *SessionRepository {
 
 func (s *SessionRepository) Create(ctx context.Context, session *domain.Session) (*domain.Session, error) {
 	const op = "SessionRepository.Create"
-
 	sessionModel := toSessionModel(session)
 	result := s.DB.WithContext(ctx).Create(sessionModel)
 	if err := result.Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return nil, e.ErrSessionTokenHashDuplicate
+				return nil, e.Wrap(op, e.ErrSessionTokenHashDuplicate)
 			}
 		}
-		return nil, e.WrapDBError(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	log.Printf("%s: session created successfully", op)
 	return toSessionEntity(sessionModel), nil
 }
 
 func (s *SessionRepository) GetByID(ctx context.Context, id uint) (*domain.Session, error) {
-	const (
-		op      = "SessionRepository.GetByID"
-		massage = "session found successfully"
-	)
-
+	const op = "SessionRepository.GetByID"
 	var sessionModel SessionModel
 	result := s.DB.WithContext(ctx).First(&sessionModel, id)
-	if err := checkGetQueryResult(result, op, massage, e.ErrSessionNotFound); err != nil {
-		return nil, err
+	if err := checkGetQueryResult(result, e.ErrSessionNotFound); err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toSessionEntity(&sessionModel), nil
+}
+
+func (s *SessionRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error) {
+	const op = "SessionRepository.GetByRefreshToken"
+	var sessionModel SessionModel
+	result := s.DB.WithContext(ctx).First(&sessionModel, "refresh_token = ?", refreshToken)
+	if err := checkGetQueryResult(result, e.ErrSessionNotFound); err != nil {
+		return nil, e.Wrap(op, err)
 	}
 
 	return toSessionEntity(&sessionModel), nil
 }
 
 func (s *SessionRepository) RevokeSession(ctx context.Context, id string) error {
-	const (
-		op      = "SessionRepository.RevokeSession"
-		message = "session revoked successfully"
-	)
-
+	const op = "SessionRepository.RevokeSession"
 	result := s.DB.WithContext(ctx).Model(&SessionModel{}).Where("id = ?", id).Update("is_revoked", true)
-	return checkChangeQueryResult(result, op, message, e.ErrSessionNotFound)
+	return checkChangeQueryResult(result, op, e.ErrSessionNotFound)
 }
 
 func (s *SessionRepository) DeleteSession(ctx context.Context, id string) error {
-	const (
-		op      = "SessionRepository.DeleteSession"
-		message = "session deleted successfully"
-	)
-
+	const op = "SessionRepository.DeleteSession"
 	result := s.DB.WithContext(ctx).Delete(&SessionModel{}, id)
-	return checkChangeQueryResult(result, op, message, e.ErrSessionNotFound)
+	return checkChangeQueryResult(result, op, e.ErrSessionNotFound)
 }
 
 func toSessionModel(s *domain.Session) *SessionModel {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
-	"log"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 )
@@ -29,18 +28,17 @@ func (u *UserRepository) Create(ctx context.Context, user *domain.User) (*domain
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			switch pgErr.ConstraintName {
 			case "idx_username":
-				return nil, e.ErrUsernameDuplicate
+				return nil, e.Wrap(op, e.ErrUsernameDuplicate)
 			case "idx_email":
-				return nil, e.ErrEmailDuplicate
+				return nil, e.Wrap(op, e.ErrEmailDuplicate)
 			default:
-				return nil, e.ErrUserDuplicate
+				return nil, e.Wrap(op, e.ErrUserDuplicate)
 			}
 		}
 
-		return nil, e.WrapDBError(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	log.Printf("%s: user saved successfully", op)
 	return toUserEntity(userModel), nil
 }
 
@@ -57,25 +55,19 @@ func (u *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 }
 
 func (u *UserRepository) Update(ctx context.Context, user *domain.User) error {
-	const (
-		op      = "UserRepository.Update"
-		message = "user updated successfully"
-	)
+	const op = "UserRepository.Update"
 
 	userModel := toUserModel(user)
 	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(userModel)
 
-	return checkChangeQueryResult(result, op, message, e.ErrUserNotFound)
+	return checkChangeQueryResult(result, op, e.ErrUserNotFound)
 }
 
 func (u *UserRepository) Delete(ctx context.Context, id uint) error {
-	const (
-		op      = "UserRepository.Delete"
-		message = "user deleted successfully"
-	)
+	const op = "UserRepository.Delete"
 
 	result := u.DB.WithContext(ctx).Delete(&UserModel{}, id)
-	return checkChangeQueryResult(result, op, message, e.ErrUserNotFound)
+	return checkChangeQueryResult(result, op, e.ErrUserNotFound)
 }
 
 func (u *UserRepository) ExistsByEmailOrUsername(ctx context.Context, email, username string) error {
@@ -95,15 +87,15 @@ func (u *UserRepository) ExistsByEmailOrUsername(ctx context.Context, email, use
 	}
 
 	if err != nil {
-		return e.WrapDBError(op, err)
+		return e.Wrap(op, err)
 	}
 
 	if foundUser.Username == username {
-		return e.ErrUsernameDuplicate
+		return e.Wrap(op, e.ErrUsernameDuplicate)
 	}
 
 	if foundUser.Email == email {
-		return e.ErrEmailDuplicate
+		return e.Wrap(op, e.ErrEmailDuplicate)
 	}
 
 	return nil
@@ -134,11 +126,11 @@ func toUserEntity(u *UserModel) *domain.User {
 }
 
 func (u *UserRepository) getUser(ctx context.Context, op string, query *gorm.DB) (*domain.User, error) {
-	const message = "user get successfully"
 	var userModel UserModel
 	result := query.First(&userModel)
-	if err := checkGetQueryResult(result, op, message, e.ErrUserNotFound); err != nil {
-		return nil, err
+	if err := checkGetQueryResult(result, e.ErrUserNotFound); err != nil {
+		return nil, e.Wrap(op, err)
 	}
+
 	return toUserEntity(&userModel), nil
 }

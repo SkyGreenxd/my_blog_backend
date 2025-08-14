@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"gorm.io/gorm"
-	"log"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 )
@@ -24,19 +23,14 @@ func (a *ArticleRepository) Create(ctx context.Context, article *domain.Article)
 	articleModel := toArticleModel(article)
 	result := a.DB.WithContext(ctx).Create(articleModel)
 	if err := result.Error; err != nil {
-		return nil, e.WrapDBError(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	log.Printf("%s: article created successfully", op)
 	return toArticleEntity(articleModel), nil
 }
 
 func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Article, error) {
-	const (
-		op      = "ArticleRepository.GetByID"
-		message = "article found successfully"
-	)
-
+	const op = "ArticleRepository.GetByID"
 	var articleModel ArticleModel
 
 	result := a.DB.WithContext(ctx).
@@ -52,24 +46,16 @@ func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Artic
 }
 
 func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) error {
-	const (
-		op      = "ArticleRepository.Update"
-		message = "article updated successfully"
-	)
-
+	const op = "ArticleRepository.Update"
 	articleModel := toArticleModel(article)
 	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(articleModel)
-	return checkChangeQueryResult(result, op, message, e.ErrArticleNotFound)
+	return checkChangeQueryResult(result, op, e.ErrArticleNotFound)
 }
 
 func (a *ArticleRepository) Delete(ctx context.Context, id uint) error {
-	const (
-		op      = "ArticleRepository.Delete"
-		message = "article deleted successfully"
-	)
-
+	const op = "ArticleRepository.Delete"
 	result := a.DB.WithContext(ctx).Delete(&ArticleModel{}, id)
-	return checkChangeQueryResult(result, op, message, e.ErrArticleNotFound)
+	return checkChangeQueryResult(result, op, e.ErrArticleNotFound)
 }
 
 func (a *ArticleRepository) ListAll(ctx context.Context) ([]domain.Article, error) {
@@ -104,12 +90,11 @@ func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *
 		articles = append(articles, *toArticleEntity(&model))
 	}
 
-	log.Printf("%s: found %d articles", op, len(articles))
 	return articles, nil
 }
 
 func toArticleModel(a *domain.Article) *ArticleModel {
-	return &ArticleModel{
+	model := &ArticleModel{
 		ID:         a.ID,
 		CreatedAt:  a.CreatedAt,
 		UpdatedAt:  a.UpdatedAt,
@@ -130,7 +115,7 @@ func toArticleModel(a *domain.Article) *ArticleModel {
 }
 
 func toArticleEntity(a *ArticleModel) *domain.Article {
-	return &domain.Article{
+	entity := &domain.Article{
 		ID:         a.ID,
 		CreatedAt:  a.CreatedAt,
 		UpdatedAt:  a.UpdatedAt,
