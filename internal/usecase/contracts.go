@@ -14,6 +14,8 @@ type HashManager interface {
 }
 
 type TokenManager interface {
-	Generate(userID uint, role, email string) (string, error)
-	Verify(tokenString string) (*AuthPrincipal, error)
+	NewJWT(userID uint, email string, role domain.Role) (string, error)
+	VerifyJWT(tokenString string) (*AuthPrincipal, error)
+	NewRefreshToken() (token string, hashed string, err error)
+	HashRefreshToken(token string) string
 }
