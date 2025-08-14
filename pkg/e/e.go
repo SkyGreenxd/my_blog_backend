@@ -3,7 +3,6 @@ package e
 import (
 	"errors"
 	"fmt"
-	"log"
 )
 
 var (
@@ -57,13 +56,4 @@ var (
 
 func Wrap(msg string, err error) error {
 	return fmt.Errorf("%s: %w", msg, err)
-}
-
-func WrapDBError(op string, err error) error {
-	if err == nil {
-		return nil
-	}
-	wrapped := Wrap(op, err)
-	log.Print(wrapped)
-	return wrapped
 }
