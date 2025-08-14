@@ -38,9 +38,14 @@ func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Artic
 	)
 
 	var articleModel ArticleModel
-	result := a.DB.WithContext(ctx).First(&articleModel, "id = ?", id)
-	if err := checkGetQueryResult(result, op, message, e.ErrArticleNotFound); err != nil {
-		return nil, err
+
+	result := a.DB.WithContext(ctx).
+		Preload("Author").
+		Preload("Category").
+		First(&articleModel, "id = ?", id)
+
+	if err := checkGetQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return nil, e.Wrap(op, err)
 	}
 
 	return toArticleEntity(&articleModel), nil
@@ -87,8 +92,11 @@ func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint)
 
 func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *gorm.DB) ([]domain.Article, error) {
 	var articleModels []ArticleModel
-	if err := query.Find(&articleModels).Error; err != nil {
-		return nil, e.WrapDBError(op, err)
+	if err := query.
+		Preload("Author").
+		Preload("Category").
+		Find(&articleModels).Error; err != nil {
+		return nil, e.Wrap(op, err)
 	}
 
 	articles := make([]domain.Article, 0, len(articleModels))
@@ -110,6 +118,15 @@ func toArticleModel(a *domain.Article) *ArticleModel {
 		AuthorID:   a.AuthorID,
 		CategoryID: a.CategoryID,
 	}
+
+	if a.Author != nil {
+		model.Author = toUserModel(a.Author)
+	}
+	if a.Category != nil {
+		model.Category = toCategoryModel(a.Category)
+	}
+
+	return model
 }
 
 func toArticleEntity(a *ArticleModel) *domain.Article {
@@ -122,4 +139,14 @@ func toArticleEntity(a *ArticleModel) *domain.Article {
 		AuthorID:   a.AuthorID,
 		CategoryID: a.CategoryID,
 	}
+
+	if a.Author != nil {
+		entity.Author = toUserEntity(a.Author)
+	}
+
+	if a.Category != nil {
+		entity.Category = toCategoryEntity(a.Category)
+	}
+
+	return entity
 }
