@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"my_blog_backend/pkg/e"
@@ -18,20 +19,22 @@ func NewBcryptHashManager(cost int) (*BcryptHashManager, error) {
 }
 
 func (manager *BcryptHashManager) HashPassword(password string) (string, error) {
+	const op = "BcryptHashManager.HashPassword"
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), manager.cost)
 	if err != nil {
-		return "", fmt.Errorf("error hashing password: %w", err)
+		return "", e.Wrap(op, err)
 	}
 
 	return string(hash), nil
 }
 
 func (manager *BcryptHashManager) Compare(password string, hash string) error {
+	const op = "BcryptHashManager.Compare"
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return e.ErrMismatchedHashAndPassword
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return e.Wrap(op, e.ErrMismatchedHashAndPassword)
 		}
-		return fmt.Errorf("error comparing password: %w", err)
+		return e.Wrap(op, err)
 	}
 
 	return nil
