@@ -15,6 +15,8 @@ type Article struct {
 	CategoryID uint
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	Author     *User
+	Category   *Category
 }
 
 func (*Article) TableName() string {

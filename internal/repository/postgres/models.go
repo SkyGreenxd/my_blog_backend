@@ -20,10 +20,12 @@ type ArticleModel struct {
 	ID         uint `gorm:"primarykey"`
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
-	Title      string `gorm:"size:128;not null"`
-	Content    string `gorm:"not null"`
-	AuthorID   uint   `gorm:"not null;index;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
-	CategoryID uint   `gorm:"not null;index;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	Title      string         `gorm:"size:128;not null"`
+	Content    string         `gorm:"not null"`
+	AuthorID   uint           `gorm:"not null;index"`
+	Author     *UserModel     `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	CategoryID uint           `gorm:"not null;index"`
+	Category   *CategoryModel `gorm:"foreignKey:CategoryID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
 
 type CategoryModel struct {
