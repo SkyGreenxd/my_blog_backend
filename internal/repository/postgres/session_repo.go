@@ -2,11 +2,11 @@ package postgres
 
 import (
 	"context"
-	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
-	"gorm.io/gorm"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type SessionRepository struct {
@@ -19,27 +19,24 @@ func NewSessionRepository(db *gorm.DB) *SessionRepository {
 	}
 }
 
+// Создание сессии
 func (s *SessionRepository) Create(ctx context.Context, session *domain.Session) (*domain.Session, error) {
 	const op = "SessionRepository.Create"
 	sessionModel := toSessionModel(session)
 	result := s.DB.WithContext(ctx).Create(sessionModel)
-	if err := result.Error; err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23505" {
-				return nil, e.Wrap(op, e.ErrSessionTokenHashDuplicate)
-			}
-		}
+
+	if err := postgresDuplicate(result, e.ErrRefreshTokenHashDuplicate); err != nil {
 		return nil, e.Wrap(op, err)
 	}
 
 	return toSessionEntity(sessionModel), nil
 }
 
-func (s *SessionRepository) GetByID(ctx context.Context, id uint) (*domain.Session, error) {
+// Получение сесси с помощью Id сессии
+func (s *SessionRepository) GetByID(ctx context.Context, sessionId uint) (*domain.Session, error) {
 	const op = "SessionRepository.GetByID"
 	var sessionModel SessionModel
-	result := s.DB.WithContext(ctx).First(&sessionModel, id)
+	result := s.DB.WithContext(ctx).First(&sessionModel, sessionId)
 	if err := checkGetQueryResult(result, e.ErrSessionNotFound); err != nil {
 		return nil, e.Wrap(op, err)
 	}
@@ -47,10 +44,11 @@ func (s *SessionRepository) GetByID(ctx context.Context, id uint) (*domain.Sessi
 	return toSessionEntity(&sessionModel), nil
 }
 
-func (s *SessionRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error) {
-	const op = "SessionRepository.GetByRefreshToken"
+// Получение сесси с помощью Refresh токена для обновления JWT
+func (s *SessionRepository) GetByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (*domain.Session, error) {
+	const op = "SessionRepository.GetByRefreshTokenHash"
 	var sessionModel SessionModel
-	result := s.DB.WithContext(ctx).First(&sessionModel, "refresh_token = ?", refreshToken)
+	result := s.DB.WithContext(ctx).First(&sessionModel, "refresh_token = ?", refreshTokenHash)
 	if err := checkGetQueryResult(result, e.ErrSessionNotFound); err != nil {
 		return nil, e.Wrap(op, err)
 	}
@@ -58,16 +56,27 @@ func (s *SessionRepository) GetByRefreshToken(ctx context.Context, refreshToken 
 	return toSessionEntity(&sessionModel), nil
 }
 
-func (s *SessionRepository) RevokeSession(ctx context.Context, id string) error {
+// Функция аннулирует сессию
+// Используется при смене пароля, выхода из аккаунта/всех устройств
+func (s *SessionRepository) RevokeSession(ctx context.Context, id uuid.UUID) error {
 	const op = "SessionRepository.RevokeSession"
 	result := s.DB.WithContext(ctx).Model(&SessionModel{}).Where("id = ?", id).Update("is_revoked", true)
-	return checkChangeQueryResult(result, op, e.ErrSessionNotFound)
+	if err := checkChangeQueryResult(result, e.ErrSessionNotFound); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
 }
 
-func (s *SessionRepository) DeleteSession(ctx context.Context, id string) error {
+// Удаление сессии
+func (s *SessionRepository) DeleteSession(ctx context.Context, id uuid.UUID) error {
 	const op = "SessionRepository.DeleteSession"
 	result := s.DB.WithContext(ctx).Delete(&SessionModel{}, id)
-	return checkChangeQueryResult(result, op, e.ErrSessionNotFound)
+	if err := checkChangeQueryResult(result, e.ErrSessionNotFound); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
 }
 
 func toSessionModel(s *domain.Session) *SessionModel {

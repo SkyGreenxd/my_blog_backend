@@ -2,17 +2,18 @@ package postgres
 
 import (
 	"errors"
+
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
-	"my_blog_backend/pkg/e"
 )
 
-func checkChangeQueryResult(result *gorm.DB, op string, notFound error) error {
+func checkChangeQueryResult(result *gorm.DB, notFound error) error {
 	if err := result.Error; err != nil {
-		return e.Wrap(op, err)
+		return err
 	}
 
 	if result.RowsAffected == 0 {
-		return e.Wrap(op, notFound)
+		return notFound
 	}
 
 	return nil
@@ -24,6 +25,34 @@ func checkGetQueryResult(result *gorm.DB, notFound error) error {
 	}
 
 	if err := result.Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Проверка на дублирование уникального значения
+func postgresDuplicate(result *gorm.DB, ErrIsExists error) error {
+	if err := result.Error; err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrIsExists
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+// Проверка на нарушение внешнего ключа
+func postgresForeignKeyViolation(result *gorm.DB, ErrInUse error) error {
+	if err := result.Error; err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return ErrInUse
+		}
+
 		return err
 	}
 

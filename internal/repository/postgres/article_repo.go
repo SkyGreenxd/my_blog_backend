@@ -2,9 +2,10 @@ package postgres
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
+
+	"gorm.io/gorm"
 )
 
 type ArticleRepository struct {
@@ -49,13 +50,21 @@ func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article)
 	const op = "ArticleRepository.Update"
 	articleModel := toArticleModel(article)
 	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(articleModel)
-	return checkChangeQueryResult(result, op, e.ErrArticleNotFound)
+	if err := checkChangeQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
 }
 
 func (a *ArticleRepository) Delete(ctx context.Context, id uint) error {
 	const op = "ArticleRepository.Delete"
 	result := a.DB.WithContext(ctx).Delete(&ArticleModel{}, id)
-	return checkChangeQueryResult(result, op, e.ErrArticleNotFound)
+	if err := checkChangeQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
 }
 
 func (a *ArticleRepository) ListAll(ctx context.Context) ([]domain.Article, error) {
@@ -78,10 +87,8 @@ func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint)
 
 func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *gorm.DB) ([]domain.Article, error) {
 	var articleModels []ArticleModel
-	if err := query.
-		Preload("Author").
-		Preload("Category").
-		Find(&articleModels).Error; err != nil {
+	result := query.Preload("Author").Preload("Category").Find(&articleModels)
+	if err := checkGetQueryResult(result, e.ErrArticleNotFound); err != nil {
 		return nil, e.Wrap(op, err)
 	}
 
