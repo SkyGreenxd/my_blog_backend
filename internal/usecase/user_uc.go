@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	refreshTokenTTL = 30 * 24 * time.Hour
+)
+
 type UserService struct {
 	userRepo     repository.UserRepository
 	articleRepo  repository.ArticleRepository
@@ -30,10 +34,6 @@ func NewUserService(u repository.UserRepository, a repository.ArticleRepository,
 func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*UserRes, error) {
 	const op = "UserService.CreateUser"
 
-	if err := userDto.Validate(); err != nil {
-		return nil, err
-	}
-
 	err := s.userRepo.ExistsByEmailOrUsername(ctx, userDto.Email, userDto.Username)
 	if err != nil {
 		return nil, e.Wrap(op, err)
@@ -44,12 +44,7 @@ func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*
 		return nil, e.Wrap(op, err)
 	}
 
-	newUser := &domain.User{
-		Role:         domain.RoleUser,
-		Username:     userDto.Username,
-		Email:        userDto.Email,
-		PasswordHash: hash,
-	}
+	newUser, err := domain.NewUser(userDto.Username, userDto.Email, hash)
 
 	userEntity, err := s.userRepo.Create(ctx, newUser)
 	if err != nil {
@@ -59,42 +54,29 @@ func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*
 	return toUserResponse(userEntity), nil
 }
 
-func (s *UserService) LoginUser(ctx context.Context, userDto LoginUserReq) (*LoginUserRes, error) {
-	const (
-		op              = "UserService.LoginUser"
-		refreshTokenTTL = 30 * 24 * time.Hour
-	)
-	// Проверить DTO.
-	if err := userDto.Validate(); err != nil {
-		return nil, e.Wrap(op, err)
-	}
-	//	Найти пользователя в базе по email.Если не найден — вернуть ошибку.
+func (s *UserService) LoginUser(ctx context.Context, userDto *LoginUserReq) (*LoginUserRes, error) {
+	const op = "UserService.LoginUser"
+
 	user, err := s.userRepo.GetByEmail(ctx, userDto.Email)
 	if err != nil {
 		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.ErrInvalidCredentials
+			return nil, e.Wrap(op, e.ErrInvalidEmail)
 		}
 		return nil, e.Wrap(op, err)
 	}
-	//	Сравнить пароль из DTO с хэшем из базы данных с помощью hashManager. Если пароли не совпадают — вернуть ошибку.
+
 	if err := s.hashManager.Compare(userDto.Password, user.PasswordHash); err != nil {
 		if errors.Is(err, e.ErrMismatchedHashAndPassword) {
-			return nil, e.ErrInvalidCredentials
+			return nil, e.Wrap(op, e.ErrInvalidPassword)
 		}
 		return nil, e.Wrap(op, err)
 	}
-	//	Если все хорошо — сгенерировать токены с помощью tokenManager.
-	jwtStruct, err := s.tokenManager.NewJWT(user.ID, user.Email, user.Role)
+
+	jwtStruct, refreshToken, refreshTokenHash, err := s.generateTokens(user.ID, user.Email, user.Role)
 	if err != nil {
 		return nil, e.Wrap(op, err)
 	}
 
-	refreshToken, refreshTokenHash, err := s.tokenManager.NewRefreshToken()
-	if err != nil {
-		return nil, e.Wrap(op, err)
-	}
-
-	//Создать сессию и загрузить ее в бд
 	session, err := s.sessionRepo.Create(ctx, domain.NewSession(
 		user.ID,
 		refreshTokenHash,
@@ -104,19 +86,171 @@ func (s *UserService) LoginUser(ctx context.Context, userDto LoginUserReq) (*Log
 		return nil, e.Wrap(op, err)
 	}
 
-	//	Вернуть response, заполненный данными
-	return toLoginUserResponse(user, session, *jwtStruct, refreshToken), nil
+	return toLoginUserResponse(user, session, jwtStruct, refreshToken), nil
 }
 
-func (s *UserService) GetUser(ctx context.Context, username string) (*UserRes, error) {
+func (s *UserService) GetUserById(ctx context.Context, id uint) (*UserRes, error) {
 	const op = "UserService.GetUser"
-}
-func (s *UserService) UpdateUser(ctx context.Context, userID uint, updateUserDto *UpdateUserReq) (*UserRes, error)
 
-// TODO: DTO должен содержать OldPassword и NewPassword.
-func (s *UserService) ChangePassword(ctx context.Context, userID uint, changePassDto *ChangePasswordReq) error
-func (s *UserService) RefreshSession(ctx context.Context, refreshToken string) (*LoginUserRes, error)
-func (s *UserService) LogoutUser(ctx context.Context, refreshToken string) error
+	user, err := s.getUser(ctx, UserFilter{Id: &id})
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toUserResponse(user), nil
+}
+
+func (s *UserService) UpdateUser(ctx context.Context, userID uint) (*UserRes, error) {
+	const op = "UserService.UpdateUser"
+
+	user, err := s.getUser(ctx, UserFilter{Id: &userID})
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	updateUser, err := s.userRepo.Update(ctx, user)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toUserResponse(updateUser), nil
+}
+
+func (s *UserService) ChangePassword(ctx context.Context, changePassword *ChangePasswordReq) error {
+	const op = "UserService.ChangePassword"
+
+	user, err := s.getUser(ctx, UserFilter{Id: &changePassword.Id})
+	if err != nil {
+		return e.Wrap(op, err)
+	}
+
+	newPassHash, err := s.hashManager.HashPassword(changePassword.NewPassword)
+	if err != nil {
+		return e.Wrap(op, err)
+	}
+
+	if err := user.ChangePassword(newPassHash); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	if _, err := s.userRepo.Update(ctx, user); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
+}
+
+func (s *UserService) RefreshSession(ctx context.Context, userRefreshToken string) (*LoginUserRes, error) {
+	const op = "UserService.RefreshSession"
+
+	oldSession, err := s.verifyRefreshToken(ctx, userRefreshToken)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	if err := s.sessionRepo.RevokeSession(ctx, oldSession.Id); err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	user, err := s.userRepo.GetById(ctx, oldSession.UserId)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	jwtStruct, refreshToken, refreshTokenHash, err := s.generateTokens(user.ID, user.Email, user.Role)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	newSession, err := s.sessionRepo.Create(ctx, domain.NewSession(
+		user.ID,
+		refreshTokenHash,
+		time.Now().UTC().Add(refreshTokenTTL)),
+	)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toLoginUserResponse(user, newSession, jwtStruct, refreshToken), nil
+}
+
+func (s *UserService) LogoutUser(ctx context.Context, userRefreshToken string) error {
+	const op = "UserService.LogoutUser"
+
+	session, err := s.verifyRefreshToken(ctx, userRefreshToken)
+	if err != nil {
+		return e.Wrap(op, err)
+	}
+
+	if err := s.sessionRepo.RevokeSession(ctx, session.Id); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
+}
+
+func (s *UserService) verifyRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error) {
+	tokenHash := s.tokenManager.HashRefreshToken(refreshToken)
+	session, err := s.sessionRepo.GetByRefreshTokenHash(ctx, tokenHash)
+	if err != nil {
+		if errors.Is(err, e.ErrSessionNotFound) {
+			return nil, e.ErrRefreshTokenInvalid
+		}
+
+		return nil, err
+	}
+
+	if err := session.ValidateState(); err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
+func (s *UserService) generateTokens(userId uint, email string, role domain.Role) (*TokenResponse, string, string, error) {
+	jwtStruct, err := s.tokenManager.NewJWT(userId, email, role)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	refreshToken, refreshTokenHash, err := s.tokenManager.NewRefreshToken()
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return jwtStruct, refreshToken, refreshTokenHash, nil
+}
+
+type UserFilter struct {
+	Id    *uint
+	Email *string
+}
+
+func (s *UserService) getUser(ctx context.Context, filter UserFilter) (*domain.User, error) {
+	if filter.Id != nil {
+		user, err := s.userRepo.GetById(ctx, *filter.Id)
+		return handleUserError(user, err)
+	}
+
+	if filter.Email != nil {
+		user, err := s.userRepo.GetByEmail(ctx, *filter.Email)
+		return handleUserError(user, err)
+	}
+
+	return nil, e.ErrUserNotFound
+}
+
+func handleUserError(user *domain.User, err error) (*domain.User, error) {
+	if err != nil {
+		if errors.Is(err, e.ErrUserNotFound) {
+			return nil, e.ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	return user, nil
+}
 
 func toUserResponse(user *domain.User) *UserRes {
 	return &UserRes{
@@ -126,7 +260,7 @@ func toUserResponse(user *domain.User) *UserRes {
 	}
 }
 
-func toLoginUserResponse(user *domain.User, session *domain.Session, accessToken TokenResponse, refreshToken string) *LoginUserRes {
+func toLoginUserResponse(user *domain.User, session *domain.Session, accessToken *TokenResponse, refreshToken string) *LoginUserRes {
 	return &LoginUserRes{
 		SessionID:             session.Id.String(),
 		AccessToken:           accessToken.Token,
