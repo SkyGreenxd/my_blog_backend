@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+type Services struct {
+	UserService     UserService
+	ArticleService  ArticleService
+	CategoryService CategoryService
+}
+
 type AuthPrincipal struct {
 	ID    uint
 	Role  domain.Role
