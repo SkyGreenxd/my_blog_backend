@@ -7,16 +7,19 @@ import (
 
 var (
 	// users
-	ErrUserNotFound  = errors.New("user not found")
-	ErrUserDuplicate = errors.New("user with such email or username already exists")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrUserDuplicate       = errors.New("user with such email or username already exists")
+	ErrUsernameIsForbidden = errors.New("username is forbidden")
+	ErrPasswordIsSame      = errors.New("password is same")
+	ErrUserAlreadyAdmin    = errors.New("user is already admin")
 	// username
 	ErrUsernameEmpty        = errors.New("username is empty")
 	ErrUsernameTooShort     = errors.New("username is too short")
 	ErrUsernameTooLong      = errors.New("username is too long")
 	ErrUsernameInvalidChars = errors.New("username contains invalid characters")
 	ErrUsernameHasSpaces    = errors.New("username contains spaces")
-	ErrUsernameDuplicate    = errors.New("the user's username already exists.")
-	ErrEmailDuplicate       = errors.New("the user's email address already exists.")
+	ErrUsernameIsExists     = errors.New("the user's username already exists.")
+	ErrEmailIsExists        = errors.New("the user's email address already exists.")
 	// role
 	ErrInvalidRole = errors.New("invalid role")
 	// email
@@ -30,11 +33,11 @@ var (
 	ErrPasswordHasSpaces = errors.New("password contains spaces")
 
 	// categories
-	ErrCategoryDuplicate = errors.New("category with such name already exists")
-	ErrCategoryNotFound  = errors.New("category not found")
-	ErrCategoryTooShort  = errors.New("category name is empty")
-	ErrCategoryTooLong   = errors.New("category name is too long")
-	ErrCategoryInUse     = errors.New("category is already in use")
+	ErrCategoryIsExists = errors.New("category with such name already exists")
+	ErrCategoryNotFound = errors.New("category not found")
+	ErrCategoryTooShort = errors.New("category name is empty")
+	ErrCategoryTooLong  = errors.New("category name is too long")
+	ErrCategoryInUse    = errors.New("category is already in use")
 
 	// articles
 	ErrTitleTooShort    = errors.New("title is too short")
@@ -50,11 +53,14 @@ var (
 	// Sessions
 	ErrSessionRevoked            = errors.New("session revoked")
 	ErrSessionExpired            = errors.New("session expired")
-	ErrSessionTokenHashDuplicate = errors.New("token hash already exists")
+	ErrRefreshTokenHashDuplicate = errors.New("refresh token hash already exists")
 	ErrSessionNotFound           = errors.New("session not found")
+	ErrRefreshTokenInvalid       = errors.New("refresh token is invalid")
 
-	// Общие ошибки для сервиса
-	ErrInvalidCredentials = errors.New("invalid credentials")
+	// Общие ошибки
+	ErrInvalidEmail    = errors.New("invalid email")
+	ErrInvalidPassword = errors.New("invalid password")
+	ErrInvalidId       = errors.New("invalid id")
 )
 
 func Wrap(msg string, err error) error {
