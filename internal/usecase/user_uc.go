@@ -108,6 +108,16 @@ func (s *UserService) LoginUser(ctx context.Context, userDto LoginUserReq) (*Log
 	return toLoginUserResponse(user, session, *jwtStruct, refreshToken), nil
 }
 
+func (s *UserService) GetUser(ctx context.Context, username string) (*UserRes, error) {
+	const op = "UserService.GetUser"
+}
+func (s *UserService) UpdateUser(ctx context.Context, userID uint, updateUserDto *UpdateUserReq) (*UserRes, error)
+
+// TODO: DTO должен содержать OldPassword и NewPassword.
+func (s *UserService) ChangePassword(ctx context.Context, userID uint, changePassDto *ChangePasswordReq) error
+func (s *UserService) RefreshSession(ctx context.Context, refreshToken string) (*LoginUserRes, error)
+func (s *UserService) LogoutUser(ctx context.Context, refreshToken string) error
+
 func toUserResponse(user *domain.User) *UserRes {
 	return &UserRes{
 		Username: user.Username,
