@@ -5,6 +5,23 @@ import (
 	"time"
 )
 
+type Services struct {
+	UserService     UserService
+	ArticleService  ArticleService
+	CategoryService CategoryService
+}
+
+type AuthenticatedUser struct {
+	ID    uint
+	Role  domain.Role
+	Email string
+}
+
+type TokenResponse struct {
+	Token     string
+	ExpiresAt time.Time
+}
+
 type CreateUserReq struct {
 	Username string
 	Email    string
@@ -31,30 +48,7 @@ type LoginUserRes struct {
 	User                  UserRes
 }
 
-func (u *LoginUserReq) Validate() error {
-	if err := domain.ValidateEmail(u.Email); err != nil {
-		return err
-	}
-
-	if err := domain.ValidateUserPassword(u.Password); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (u *CreateUserReq) Validate() error {
-	if err := domain.ValidateUsername(u.Username); err != nil {
-		return err
-	}
-
-	if err := domain.ValidateEmail(u.Email); err != nil {
-		return err
-	}
-
-	if err := domain.ValidateUserPassword(u.Password); err != nil {
-		return err
-	}
-
-	return nil
+type ChangePasswordReq struct {
+	Id          uint
+	NewPassword string
 }
