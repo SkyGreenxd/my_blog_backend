@@ -2,11 +2,11 @@ package postgres
 
 import (
 	"context"
-	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
-	"gorm.io/gorm"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
+	"time"
+
+	"gorm.io/gorm"
 )
 
 type CategoryRepository struct {
@@ -23,15 +23,8 @@ func (c *CategoryRepository) Create(ctx context.Context, category *domain.Catego
 	const op = "CategoryRepository.Create"
 	categoryModel := toCategoryModel(category)
 	result := c.DB.WithContext(ctx).Create(categoryModel)
-	if err := result.Error; err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23505" {
-				return nil, e.Wrap(op, e.ErrCategoryDuplicate)
-			}
-		}
-
-		return nil, e.Wrap(op, err)
+	if err := postgresDuplicate(result, e.ErrCategoryIsExists); err != nil {
+		return nil, err
 	}
 
 	return toCategoryEntity(categoryModel), nil
@@ -50,20 +43,23 @@ func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Cate
 
 func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	const op = "CategoryRepository.Update"
-	categoryModel := toCategoryModel(category)
-	result := c.DB.WithContext(ctx).Model(&CategoryModel{}).Where("id = ?", categoryModel.ID).Updates(categoryModel)
 
-	return checkChangeQueryResult(result, op, e.ErrCategoryNotFound)
+	updates := map[string]interface{}{
+		"name":       category.Name,
+		"updated_at": time.Now().UTC(),
+	}
+	result := c.DB.WithContext(ctx).Model(&CategoryModel{}).Where("id = ?", category.ID).Updates(updates)
+	if err := checkChangeQueryResult(result, e.ErrCategoryNotFound); err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
 }
 
 func (c *CategoryRepository) Delete(ctx context.Context, id uint) error {
 	const op = "CategoryRepository.Delete"
 	result := c.DB.WithContext(ctx).Delete(&CategoryModel{}, id)
-	if err := result.Error; err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return e.Wrap(op, e.ErrCategoryInUse)
-		}
+	if err := postgresForeignKeyViolation(result, e.ErrCategoryInUse); err != nil {
 		return e.Wrap(op, err)
 	}
 
