@@ -4,12 +4,13 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"github.com/golang-jwt/jwt/v5"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/internal/usecase"
 	"my_blog_backend/pkg/e"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type TokenManager struct {
@@ -45,7 +46,7 @@ func (manager *TokenManager) NewJWT(userID uint, email string, role domain.Role)
 	}, nil
 }
 
-func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.AuthPrincipal, error) {
+func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.AuthenticatedUser, error) {
 	const op = "tokenManager.VerifyJWT"
 	claims := &UserClaims{}
 
@@ -87,14 +88,14 @@ func (manager *TokenManager) HashRefreshToken(token string) string {
 	return base64.URLEncoding.EncodeToString(hash[:])
 }
 
-func claimsToAuthPrincipal(claims *UserClaims) (*usecase.AuthPrincipal, error) {
+func claimsToAuthPrincipal(claims *UserClaims) (*usecase.AuthenticatedUser, error) {
 	const op = "tokenManager.claimsToAuthPrincipal"
 	userId, err := strconv.ParseUint(claims.Subject, 10, 64)
 	if err != nil {
 		return nil, e.Wrap(op, err)
 	}
 
-	authPrincipal := &usecase.AuthPrincipal{
+	authPrincipal := &usecase.AuthenticatedUser{
 		ID:    uint(userId),
 		Email: claims.Email,
 		Role:  claims.Role,
