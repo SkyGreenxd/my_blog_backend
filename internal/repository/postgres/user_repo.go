@@ -3,10 +3,11 @@ package postgres
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
-	"gorm.io/gorm"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"gorm.io/gorm"
 )
 
 type UserRepository struct {
@@ -28,9 +29,9 @@ func (u *UserRepository) Create(ctx context.Context, user *domain.User) (*domain
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			switch pgErr.ConstraintName {
 			case "idx_username":
-				return nil, e.Wrap(op, e.ErrUsernameDuplicate)
+				return nil, e.Wrap(op, e.ErrUsernameIsExists)
 			case "idx_email":
-				return nil, e.Wrap(op, e.ErrEmailDuplicate)
+				return nil, e.Wrap(op, e.ErrEmailIsExists)
 			default:
 				return nil, e.Wrap(op, e.ErrUserDuplicate)
 			}
@@ -54,20 +55,30 @@ func (u *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	return u.getUser(ctx, op, query)
 }
 
-func (u *UserRepository) Update(ctx context.Context, user *domain.User) error {
+func (u *UserRepository) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
 	const op = "UserRepository.Update"
 
 	userModel := toUserModel(user)
 	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(userModel)
 
-	return checkChangeQueryResult(result, op, e.ErrUserNotFound)
+	err := checkChangeQueryResult(result, e.ErrUserNotFound)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toUserEntity(userModel), nil
 }
 
 func (u *UserRepository) Delete(ctx context.Context, id uint) error {
 	const op = "UserRepository.Delete"
 
 	result := u.DB.WithContext(ctx).Delete(&UserModel{}, id)
-	return checkChangeQueryResult(result, op, e.ErrUserNotFound)
+	err := checkChangeQueryResult(result, e.ErrUserNotFound)
+	if err != nil {
+		return e.Wrap(op, err)
+	}
+
+	return nil
 }
 
 func (u *UserRepository) ExistsByEmailOrUsername(ctx context.Context, email, username string) error {
@@ -91,11 +102,11 @@ func (u *UserRepository) ExistsByEmailOrUsername(ctx context.Context, email, use
 	}
 
 	if foundUser.Username == username {
-		return e.Wrap(op, e.ErrUsernameDuplicate)
+		return e.Wrap(op, e.ErrUsernameIsExists)
 	}
 
 	if foundUser.Email == email {
-		return e.Wrap(op, e.ErrEmailDuplicate)
+		return e.Wrap(op, e.ErrEmailIsExists)
 	}
 
 	return nil
