@@ -1,9 +1,10 @@
 package domain
 
 import (
-	"github.com/google/uuid"
 	"my_blog_backend/pkg/e"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Session struct {
@@ -38,8 +39,4 @@ func (s *Session) ValidateState() error {
 	}
 
 	return nil
-}
-
-func (s *Session) Revoke() {
-	s.IsRevoked = true
 }
