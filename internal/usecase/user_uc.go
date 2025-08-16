@@ -13,6 +13,10 @@ const (
 	refreshTokenTTL = 30 * 24 * time.Hour
 )
 
+// TODO: вынести повторяющийся код в функции
+// вынести логику создания сессий в LoginUser и RefreshSession в отдельный метод
+// сделать одну функцию для ошибок, заменить handleUserError
+
 type UserService struct {
 	userRepo     repository.UserRepository
 	articleRepo  repository.ArticleRepository
@@ -36,19 +40,27 @@ func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*
 
 	err := s.userRepo.ExistsByEmailOrUsername(ctx, userDto.Email, userDto.Username)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrUsernameIsExists) {
+			return nil, e.Wrap(op, e.ErrUsernameIsExists)
+		}
+
+		if errors.Is(err, e.ErrEmailIsExists) {
+			return nil, e.Wrap(op, e.ErrEmailIsExists)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	hash, err := s.hashManager.HashPassword(userDto.Password)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	newUser, err := domain.NewUser(userDto.Username, userDto.Email, hash)
 
 	userEntity, err := s.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return toUserResponse(userEntity), nil
@@ -62,19 +74,19 @@ func (s *UserService) LoginUser(ctx context.Context, userDto *LoginUserReq) (*Lo
 		if errors.Is(err, e.ErrUserNotFound) {
 			return nil, e.Wrap(op, e.ErrInvalidEmail)
 		}
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := s.hashManager.Compare(userDto.Password, user.PasswordHash); err != nil {
 		if errors.Is(err, e.ErrMismatchedHashAndPassword) {
 			return nil, e.Wrap(op, e.ErrInvalidPassword)
 		}
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	jwtStruct, refreshToken, refreshTokenHash, err := s.generateTokens(user.ID, user.Email, user.Role)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	session, err := s.sessionRepo.Create(ctx, domain.NewSession(
@@ -83,7 +95,10 @@ func (s *UserService) LoginUser(ctx context.Context, userDto *LoginUserReq) (*Lo
 		time.Now().UTC().Add(refreshTokenTTL)),
 	)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrRefreshTokenHashDuplicate) {
+			return nil, e.Wrap(op, e.ErrRefreshTokenHashDuplicate)
+		}
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return toLoginUserResponse(user, session, jwtStruct, refreshToken), nil
@@ -94,7 +109,10 @@ func (s *UserService) GetUserById(ctx context.Context, id uint) (*UserRes, error
 
 	user, err := s.getUser(ctx, UserFilter{Id: &id})
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrUserNotFound) {
+			return nil, e.Wrap(op, e.ErrUserNotFound)
+		}
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return toUserResponse(user), nil
@@ -105,12 +123,15 @@ func (s *UserService) UpdateUser(ctx context.Context, userID uint) (*UserRes, er
 
 	user, err := s.getUser(ctx, UserFilter{Id: &userID})
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrUserNotFound) {
+			return nil, e.Wrap(op, e.ErrUserNotFound)
+		}
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	updateUser, err := s.userRepo.Update(ctx, user)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return toUserResponse(updateUser), nil
@@ -121,20 +142,26 @@ func (s *UserService) ChangePassword(ctx context.Context, changePassword *Change
 
 	user, err := s.getUser(ctx, UserFilter{Id: &changePassword.Id})
 	if err != nil {
-		return e.Wrap(op, err)
+		if errors.Is(err, e.ErrUserNotFound) {
+			return e.Wrap(op, e.ErrUserNotFound)
+		}
+		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	newPassHash, err := s.hashManager.HashPassword(changePassword.NewPassword)
 	if err != nil {
-		return e.Wrap(op, err)
+		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := user.ChangePassword(newPassHash); err != nil {
-		return e.Wrap(op, err)
+		if errors.Is(err, e.ErrPasswordIsSame) {
+			return e.Wrap(op, e.ErrPasswordIsSame)
+		}
+		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if _, err := s.userRepo.Update(ctx, user); err != nil {
-		return e.Wrap(op, err)
+		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return nil
@@ -145,21 +172,36 @@ func (s *UserService) RefreshSession(ctx context.Context, userRefreshToken strin
 
 	oldSession, err := s.verifyRefreshToken(ctx, userRefreshToken)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrRefreshTokenInvalid) {
+			return nil, e.Wrap(op, e.ErrRefreshTokenInvalid)
+		}
+
+		if errors.Is(err, e.ErrSessionRevoked) {
+			return nil, e.Wrap(op, e.ErrSessionRevoked)
+		}
+
+		if errors.Is(err, e.ErrSessionExpired) {
+			return nil, e.Wrap(op, e.ErrSessionExpired)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, oldSession.Id); err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	user, err := s.userRepo.GetById(ctx, oldSession.UserId)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrUserNotFound) {
+			return nil, e.Wrap(op, e.ErrUserNotFound)
+		}
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	jwtStruct, refreshToken, refreshTokenHash, err := s.generateTokens(user.ID, user.Email, user.Role)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	newSession, err := s.sessionRepo.Create(ctx, domain.NewSession(
@@ -168,7 +210,10 @@ func (s *UserService) RefreshSession(ctx context.Context, userRefreshToken strin
 		time.Now().UTC().Add(refreshTokenTTL)),
 	)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		if errors.Is(err, e.ErrRefreshTokenHashDuplicate) {
+			return nil, e.Wrap(op, e.ErrRefreshTokenHashDuplicate)
+		}
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return toLoginUserResponse(user, newSession, jwtStruct, refreshToken), nil
@@ -179,11 +224,23 @@ func (s *UserService) LogoutUser(ctx context.Context, userRefreshToken string) e
 
 	session, err := s.verifyRefreshToken(ctx, userRefreshToken)
 	if err != nil {
-		return e.Wrap(op, err)
+		if errors.Is(err, e.ErrRefreshTokenInvalid) {
+			return e.Wrap(op, e.ErrRefreshTokenInvalid)
+		}
+
+		if errors.Is(err, e.ErrSessionRevoked) {
+			return e.Wrap(op, e.ErrSessionRevoked)
+		}
+
+		if errors.Is(err, e.ErrSessionExpired) {
+			return e.Wrap(op, e.ErrSessionExpired)
+		}
+
+		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, session.Id); err != nil {
-		return e.Wrap(op, err)
+		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	return nil
