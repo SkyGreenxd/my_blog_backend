@@ -60,11 +60,11 @@ func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.Authenticat
 		keyFunc, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 	)
 	if err != nil {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrParseFailed)
 	}
 
 	if !token.Valid {
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, e.ErrTokenInvalid)
 	}
 
 	return claimsToAuthPrincipal(claims)
