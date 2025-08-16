@@ -52,3 +52,19 @@ type ChangePasswordReq struct {
 	Id          uint
 	NewPassword string
 }
+
+type CreateCategoryReq struct {
+	UserRole     domain.Role
+	CategoryName string
+}
+
+type UpdateCategoryReq struct {
+	UserRole        domain.Role
+	CategoryId      uint
+	NewCategoryName string
+}
+
+type DeleteCategoryReq struct {
+	UserRole   domain.Role
+	CategoryId uint
+}
