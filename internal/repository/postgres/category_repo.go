@@ -24,7 +24,7 @@ func (c *CategoryRepository) Create(ctx context.Context, category *domain.Catego
 	categoryModel := toCategoryModel(category)
 	result := c.DB.WithContext(ctx).Create(categoryModel)
 	if err := postgresDuplicate(result, e.ErrCategoryIsExists); err != nil {
-		return nil, err
+		return nil, e.Wrap(op, err)
 	}
 
 	return toCategoryEntity(categoryModel), nil
