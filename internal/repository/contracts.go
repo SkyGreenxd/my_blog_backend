@@ -29,6 +29,7 @@ type ArticleRepository interface {
 type CategoryRepository interface {
 	Create(ctx context.Context, category *domain.Category) (*domain.Category, error)
 	GetByID(ctx context.Context, id uint) (*domain.Category, error)
+	GetByName(ctx context.Context, name string) (*domain.Category, error)
 	Update(ctx context.Context, category *domain.Category) error
 	Delete(ctx context.Context, id uint) error
 	ListAll(ctx context.Context) ([]domain.Category, error)

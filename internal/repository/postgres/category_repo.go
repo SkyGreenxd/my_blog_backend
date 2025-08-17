@@ -41,6 +41,17 @@ func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Cate
 	return toCategoryEntity(&categoryModel), nil
 }
 
+func (c *CategoryRepository) GetByName(ctx context.Context, name string) (*domain.Category, error) {
+	const op = "CategoryRepository.GetByName"
+	var categoryModel CategoryModel
+	result := c.DB.WithContext(ctx).First(&categoryModel, "name = ?", name)
+	if err := checkGetQueryResult(result, e.ErrCategoryNotFound); err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toCategoryEntity(&categoryModel), nil
+}
+
 func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	const op = "CategoryRepository.Update"
 
