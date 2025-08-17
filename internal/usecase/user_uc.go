@@ -118,6 +118,21 @@ func (s *UserService) GetUserById(ctx context.Context, id uint) (*UserRes, error
 	return toUserResponse(user), nil
 }
 
+func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*UserRes, error) {
+	const op = "UserService.GetUserByUsername"
+
+	user, err := s.getUser(ctx, UserFilter{Username: &username})
+	if err != nil {
+		if errors.Is(err, e.ErrUserNotFound) {
+			return nil, e.Wrap(op, e.ErrUserNotFound)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	return toUserResponse(user), nil
+}
+
 func (s *UserService) UpdateUser(ctx context.Context, userID uint) (*UserRes, error) {
 	const op = "UserService.UpdateUser"
 
