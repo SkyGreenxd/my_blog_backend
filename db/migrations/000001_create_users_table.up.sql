@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    role VARCHAR(255) NOT NULL DEFAULT 'user',
+    username VARCHAR(32) NOT NULL,
+    email VARCHAR(320) NOT NULL,
+    password_hash TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_username ON users (username);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email ON users (email);

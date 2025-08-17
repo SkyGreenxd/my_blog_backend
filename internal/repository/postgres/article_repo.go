@@ -2,11 +2,10 @@ package postgres
 
 import (
 	"context"
-	"errors"
-	"gorm.io/gorm"
-	"log"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
+
+	"gorm.io/gorm"
 )
 
 type ArticleRepository struct {
@@ -25,60 +24,46 @@ func (a *ArticleRepository) Create(ctx context.Context, article *domain.Article)
 	articleModel := toArticleModel(article)
 	result := a.DB.WithContext(ctx).Create(articleModel)
 	if err := result.Error; err != nil {
-		return nil, e.WrapDBError(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	log.Printf("%s: article created successfully", op)
 	return toArticleEntity(articleModel), nil
 }
 
 func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Article, error) {
 	const op = "ArticleRepository.GetByID"
-
 	var articleModel ArticleModel
-	result := a.DB.WithContext(ctx).First(&articleModel, "id = ?", id)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, e.ErrArticleNotFound
+
+	result := a.DB.WithContext(ctx).
+		Preload("Author").
+		Preload("Category").
+		First(&articleModel, "id = ?", id)
+
+	if err := checkGetQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return nil, e.Wrap(op, err)
 	}
 
-	if err := result.Error; err != nil {
-		return nil, e.WrapDBError(op, err)
-	}
-
-	log.Printf("%s: article found successfully", op)
 	return toArticleEntity(&articleModel), nil
 }
 
 func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) error {
 	const op = "ArticleRepository.Update"
-
 	articleModel := toArticleModel(article)
 	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(articleModel)
-	if err := result.Error; err != nil {
-		return e.WrapDBError(op, err)
+	if err := checkChangeQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return e.Wrap(op, err)
 	}
 
-	if result.RowsAffected == 0 {
-		return e.ErrArticleNotFound
-	}
-
-	log.Printf("%s: article updated successfully", op)
 	return nil
 }
 
 func (a *ArticleRepository) Delete(ctx context.Context, id uint) error {
 	const op = "ArticleRepository.Delete"
-
 	result := a.DB.WithContext(ctx).Delete(&ArticleModel{}, id)
-	if err := result.Error; err != nil {
-		return e.WrapDBError(op, err)
+	if err := checkChangeQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return e.Wrap(op, err)
 	}
 
-	if result.RowsAffected == 0 {
-		return e.ErrArticleNotFound
-	}
-
-	log.Printf("%s: article deleted successfully", op)
 	return nil
 }
 
@@ -100,34 +85,11 @@ func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint)
 	return a.listArticles(ctx, op, query)
 }
 
-func toArticleModel(a *domain.Article) *ArticleModel {
-	return &ArticleModel{
-		ID:         a.ID,
-		CreatedAt:  a.CreatedAt,
-		UpdatedAt:  a.UpdatedAt,
-		Title:      a.Title,
-		Content:    a.Content,
-		AuthorID:   a.AuthorID,
-		CategoryID: a.CategoryID,
-	}
-}
-
-func toArticleEntity(a *ArticleModel) *domain.Article {
-	return &domain.Article{
-		ID:         a.ID,
-		CreatedAt:  a.CreatedAt,
-		UpdatedAt:  a.UpdatedAt,
-		Title:      a.Title,
-		Content:    a.Content,
-		AuthorID:   a.AuthorID,
-		CategoryID: a.CategoryID,
-	}
-}
-
 func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *gorm.DB) ([]domain.Article, error) {
 	var articleModels []ArticleModel
-	if err := query.Find(&articleModels).Error; err != nil {
-		return nil, e.WrapDBError(op, err)
+	result := query.Preload("Author").Preload("Category").Find(&articleModels)
+	if err := checkGetQueryResult(result, e.ErrArticleNotFound); err != nil {
+		return nil, e.Wrap(op, err)
 	}
 
 	articles := make([]domain.Article, 0, len(articleModels))
@@ -135,6 +97,48 @@ func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *
 		articles = append(articles, *toArticleEntity(&model))
 	}
 
-	log.Printf("%s: found %d articles", op, len(articles))
 	return articles, nil
+}
+
+func toArticleModel(a *domain.Article) *ArticleModel {
+	model := &ArticleModel{
+		ID:         a.ID,
+		CreatedAt:  a.CreatedAt,
+		UpdatedAt:  a.UpdatedAt,
+		Title:      a.Title,
+		Content:    a.Content,
+		AuthorID:   a.AuthorID,
+		CategoryID: a.CategoryID,
+	}
+
+	if a.Author != nil {
+		model.Author = toUserModel(a.Author)
+	}
+	if a.Category != nil {
+		model.Category = toCategoryModel(a.Category)
+	}
+
+	return model
+}
+
+func toArticleEntity(a *ArticleModel) *domain.Article {
+	entity := &domain.Article{
+		ID:         a.ID,
+		CreatedAt:  a.CreatedAt,
+		UpdatedAt:  a.UpdatedAt,
+		Title:      a.Title,
+		Content:    a.Content,
+		AuthorID:   a.AuthorID,
+		CategoryID: a.CategoryID,
+	}
+
+	if a.Author != nil {
+		entity.Author = toUserEntity(a.Author)
+	}
+
+	if a.Category != nil {
+		entity.Category = toCategoryEntity(a.Category)
+	}
+
+	return entity
 }

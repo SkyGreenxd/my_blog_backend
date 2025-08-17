@@ -3,14 +3,17 @@ package repository
 import (
 	"context"
 	"my_blog_backend/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) (*domain.User, error)
 	GetById(ctx context.Context, id uint) (*domain.User, error)
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
-	//Update(ctx context.Context, user *domain.User) error
-	//Delete(ctx context.Context, id uint) error
+	Update(ctx context.Context, user *domain.User) (*domain.User, error)
+	Delete(ctx context.Context, id uint) error
+	ExistsByEmailOrUsername(ctx context.Context, email, username string) error
 }
 
 type ArticleRepository interface {
@@ -26,7 +29,16 @@ type ArticleRepository interface {
 type CategoryRepository interface {
 	Create(ctx context.Context, category *domain.Category) (*domain.Category, error)
 	GetByID(ctx context.Context, id uint) (*domain.Category, error)
+	GetByName(ctx context.Context, name string) (*domain.Category, error)
 	Update(ctx context.Context, category *domain.Category) error
 	Delete(ctx context.Context, id uint) error
 	ListAll(ctx context.Context) ([]domain.Category, error)
+}
+
+type SessionRepository interface {
+	Create(ctx context.Context, session *domain.Session) (*domain.Session, error)
+	GetByID(ctx context.Context, id uint) (*domain.Session, error)
+	GetByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (*domain.Session, error)
+	RevokeSession(ctx context.Context, id uuid.UUID) error
+	DeleteSession(ctx context.Context, id uuid.UUID) error
 }
