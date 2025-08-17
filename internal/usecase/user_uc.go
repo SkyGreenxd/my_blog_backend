@@ -16,6 +16,7 @@ const (
 // TODO: вынести повторяющийся код в функции
 // вынести логику создания сессий в LoginUser и RefreshSession в отдельный метод
 // сделать одну функцию для ошибок, заменить handleUserError
+// создание сессии повторяющийся код
 
 type UserService struct {
 	userRepo     repository.UserRepository
@@ -72,14 +73,14 @@ func (s *UserService) LoginUser(ctx context.Context, userDto *LoginUserReq) (*Lo
 	user, err := s.userRepo.GetByEmail(ctx, userDto.Email)
 	if err != nil {
 		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.Wrap(op, e.ErrInvalidEmail)
+			return nil, e.Wrap(op, e.ErrInvalidCredentials)
 		}
 		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := s.hashManager.Compare(userDto.Password, user.PasswordHash); err != nil {
 		if errors.Is(err, e.ErrMismatchedHashAndPassword) {
-			return nil, e.Wrap(op, e.ErrInvalidPassword)
+			return nil, e.Wrap(op, e.ErrInvalidCredentials)
 		}
 		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
@@ -294,8 +295,8 @@ func (s *UserService) generateTokens(userId uint, email string, role domain.Role
 }
 
 type UserFilter struct {
-	Id    *uint
-	Email *string
+	Id       *uint
+	Username *string
 }
 
 func (s *UserService) getUser(ctx context.Context, filter UserFilter) (*domain.User, error) {
@@ -304,8 +305,8 @@ func (s *UserService) getUser(ctx context.Context, filter UserFilter) (*domain.U
 		return handleUserError(user, err)
 	}
 
-	if filter.Email != nil {
-		user, err := s.userRepo.GetByEmail(ctx, *filter.Email)
+	if filter.Username != nil {
+		user, err := s.userRepo.GetByEmail(ctx, *filter.Username)
 		return handleUserError(user, err)
 	}
 
