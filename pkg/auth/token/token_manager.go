@@ -71,11 +71,10 @@ func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.Authenticat
 }
 
 func (manager *TokenManager) NewRefreshToken() (string, string, error) {
-	const op = "tokenManager.NewRefreshToken"
 	b := make([]byte, 32) // 256 бит
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", "", e.Wrap(op, err)
+		return "", "", err
 	}
 
 	token := base64.URLEncoding.EncodeToString(b)
