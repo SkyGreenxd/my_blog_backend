@@ -16,14 +16,14 @@ func NewCategoryService(c repository.CategoryRepository) *CategoryService {
 	return &CategoryService{categoryRepo: c}
 }
 
-func (s *CategoryService) Create(ctx context.Context, createCategoryReq *CreateCategoryReq) (string, error) {
+func (s *CategoryService) Create(ctx context.Context, req *CreateCategoryReq) (string, error) {
 	const op = "CategoryService.Create"
 
-	if createCategoryReq.UserRole != domain.RoleAdmin {
+	if req.UserRole != domain.RoleAdmin {
 		return "", e.Wrap(op, e.ErrPermissionDenied)
 	}
 
-	newCategory := domain.NewCategory(createCategoryReq.CategoryName)
+	newCategory := domain.NewCategory(req.CategoryName)
 
 	categoryEntity, err := s.categoryRepo.Create(ctx, newCategory)
 	if err != nil {
@@ -53,14 +53,14 @@ func (s *CategoryService) GetAll(ctx context.Context) ([]string, error) {
 	return result, nil
 }
 
-func (s *CategoryService) Update(ctx context.Context, updateCategoryReq *UpdateCategoryReq) error {
+func (s *CategoryService) Update(ctx context.Context, req *UpdateCategoryReq) error {
 	const op = "CategoryService.Update"
 
-	if updateCategoryReq.UserRole != domain.RoleAdmin {
+	if req.UserRole != domain.RoleAdmin {
 		return e.Wrap(op, e.ErrPermissionDenied)
 	}
 
-	category, err := s.categoryRepo.GetByID(ctx, updateCategoryReq.CategoryId)
+	category, err := s.categoryRepo.GetByID(ctx, req.CategoryId)
 	if err != nil {
 		if errors.Is(err, e.ErrCategoryNotFound) {
 			return e.Wrap(op, e.ErrCategoryNotFound)
@@ -69,7 +69,7 @@ func (s *CategoryService) Update(ctx context.Context, updateCategoryReq *UpdateC
 		return e.Wrap(op, e.ErrInternalServer)
 	}
 
-	if err := category.ChangeName(updateCategoryReq.NewCategoryName); err != nil {
+	if err := category.ChangeName(req.NewCategoryName); err != nil {
 		return e.Wrap(op, err)
 	}
 
@@ -80,14 +80,14 @@ func (s *CategoryService) Update(ctx context.Context, updateCategoryReq *UpdateC
 	return nil
 }
 
-func (s *CategoryService) Delete(ctx context.Context, deleteCategoryReq *DeleteCategoryReq) error {
+func (s *CategoryService) Delete(ctx context.Context, req *DeleteCategoryReq) error {
 	const op = "CategoryService.Delete"
 
-	if deleteCategoryReq.UserRole != domain.RoleAdmin {
+	if req.UserRole != domain.RoleAdmin {
 		return e.Wrap(op, e.ErrPermissionDenied)
 	}
 
-	if err := s.categoryRepo.Delete(ctx, deleteCategoryReq.CategoryId); err != nil {
+	if err := s.categoryRepo.Delete(ctx, req.CategoryId); err != nil {
 		if errors.Is(err, e.ErrCategoryNotFound) {
 			return e.Wrap(op, e.ErrCategoryNotFound)
 		}
