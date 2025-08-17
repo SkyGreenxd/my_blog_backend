@@ -68,3 +68,37 @@ type DeleteCategoryReq struct {
 	UserRole   domain.Role
 	CategoryId uint
 }
+
+type ArticleRes struct {
+	ArticleId uint
+	UserId    uint
+	Username  string
+	Title     string
+	Content   string
+	Category  string
+}
+
+type GetArticlesByUserRes struct {
+	Articles []*ArticleRes
+}
+
+type CreateArticleReq struct {
+	UserId       uint
+	Title        string
+	Content      string
+	CategoryName string
+}
+
+type CreateArticleRes struct {
+	ArticleId    uint
+	Title        string
+	Content      string
+	CategoryName string
+}
+
+type GetArticleRes struct {
+	Title        string
+	Content      string
+	CategoryName string
+	Username     string
+}
