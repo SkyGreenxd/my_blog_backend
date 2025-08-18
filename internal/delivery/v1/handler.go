@@ -3,18 +3,15 @@ package v1
 import (
 	"github.com/gin-gonic/gin"
 	"my_blog_backend/internal/usecase"
-	"my_blog_backend/pkg/auth/token"
 )
 
 type Handler struct {
-	services     *usecase.Services
-	tokenManager token.TokenManager
+	services *usecase.Services
 }
 
-func NewHandler(services *usecase.Services, tokenManager token.TokenManager) *Handler {
+func NewHandler(services *usecase.Services) *Handler {
 	return &Handler{
-		services:     services,
-		tokenManager: tokenManager,
+		services: services,
 	}
 }
 
