@@ -49,7 +49,7 @@ type LoginUserRes struct {
 }
 
 type ChangePasswordReq struct {
-	Id          uint
+	OldPassword string
 	NewPassword string
 }
 
@@ -101,4 +101,9 @@ type GetArticleRes struct {
 	Content      string
 	CategoryName string
 	Username     string
+}
+
+type UpdateUserReq struct {
+	Username *string
+	Email    *string
 }
