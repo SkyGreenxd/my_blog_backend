@@ -38,11 +38,27 @@ type LoginUserRes struct {
 	User                  UserRes   `json:"user"`
 }
 
-func toUserResponse(user *usecase.UserRes) *UserRes {
-	return &UserRes{
-		Username: user.Username,
-		Email:    user.Email,
-		Role:     user.Role,
+type UpdateUserReq struct {
+	Username *string `json:"username" binding:"required,min=5,max=32,nospaces"`
+	Email    *string `json:"email" binding:"required,email,min=3,max=32,nospaces"`
+}
+
+type ChangePasswordReq struct {
+	OldPassword string `json:"old_password" binding:"required,min=8,max=128,nospaces"`
+	NewPassword string `json:"new_password" binding:"required,min=8,max=128,nospaces"`
+}
+
+func ToChangePasswordReq(req *ChangePasswordReq) *usecase.ChangePasswordReq {
+	return &usecase.ChangePasswordReq{
+		OldPassword: req.OldPassword,
+		NewPassword: req.NewPassword,
+	}
+}
+
+func ToUpdateUserReq(req *UpdateUserReq) *usecase.UpdateUserReq {
+	return &usecase.UpdateUserReq{
+		Username: req.Username,
+		Email:    req.Email,
 	}
 }
 
@@ -53,7 +69,7 @@ func ToLoginUserRes(res *usecase.LoginUserRes) *LoginUserRes {
 		RefreshToken:          res.RefreshToken,
 		AccessTokenExpiresAt:  res.AccessTokenExpiresAt,
 		RefreshTokenExpiresAt: res.RefreshTokenExpiresAt,
-		User:                  *toUserResponse(&res.User),
+		User:                  *ToUserRes(&res.User),
 	}
 }
 
