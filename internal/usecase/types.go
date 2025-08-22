@@ -6,9 +6,17 @@ import (
 )
 
 type Services struct {
-	UserService     UserService
-	ArticleService  ArticleService
-	CategoryService CategoryService
+	UserService     *UserService
+	ArticleService  *ArticleService
+	CategoryService *CategoryService
+}
+
+func NewServices(u *UserService, a *ArticleService, c *CategoryService) *Services {
+	return &Services{
+		UserService:     u,
+		ArticleService:  a,
+		CategoryService: c,
+	}
 }
 
 type AuthenticatedUser struct {
