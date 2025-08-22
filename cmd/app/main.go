@@ -1,12 +1,9 @@
 package main
 
 import (
-	"log"
-	"my_blog_backend/config"
+	"my_blog_backend/internal/app"
 )
 
 func main() {
-	if err := config.LoadEnv(); err != nil {
-		log.Fatal(err)
-	}
+	app.Run()
 }
