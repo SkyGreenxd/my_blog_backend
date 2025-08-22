@@ -12,10 +12,6 @@ type Category struct {
 	Name      string
 }
 
-func (*Category) TableName() string {
-	return "categories"
-}
-
 func NewCategory(name string) *Category {
 	return &Category{
 		Name: name,

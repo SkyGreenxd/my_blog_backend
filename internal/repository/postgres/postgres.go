@@ -1,14 +1,15 @@
 package postgres
 
 import (
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"my_blog_backend/pkg/e"
 	"os"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type PgDatabase struct {
-	db *gorm.DB
+	Db *gorm.DB
 }
 
 func Connect() (*PgDatabase, error) {
@@ -28,11 +29,11 @@ func Connect() (*PgDatabase, error) {
 		return nil, e.Wrap("failed to ping db", err)
 	}
 
-	return &PgDatabase{db: db}, nil
+	return &PgDatabase{Db: db}, nil
 }
 
 func (pg *PgDatabase) Close() error {
-	sqlDb, err := pg.db.DB()
+	sqlDb, err := pg.Db.DB()
 	if err != nil {
 		return e.Wrap("failed to close db", err)
 	}

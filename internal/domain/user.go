@@ -23,24 +23,24 @@ const (
 	RoleUser  Role = "user"
 )
 
-func (*User) TableName() string {
-	return "users"
-}
-
-func NewUser(username, email, passwordHash string) (*User, error) {
-	forbiddenUsernames := []string{"admin", "root", "user"}
-	for _, forbidden := range forbiddenUsernames {
-		if strings.EqualFold(username, forbidden) {
-			return nil, e.ErrUsernameIsForbidden
-		}
-	}
-
+func NewUser(username, email, passwordHash string) *User {
 	return &User{
 		Username:     username,
 		Email:        email,
 		PasswordHash: passwordHash,
 		Role:         RoleUser,
-	}, nil
+	}
+}
+
+func (u *User) Validate() error {
+	forbiddenUsernames := []string{"admin", "root", "user"}
+	for _, forbidden := range forbiddenUsernames {
+		if strings.EqualFold(u.Username, forbidden) {
+			return e.ErrUsernameIsForbidden
+		}
+	}
+
+	return nil
 }
 
 func (u *User) ChangePassword(newPasswordHash string) error {

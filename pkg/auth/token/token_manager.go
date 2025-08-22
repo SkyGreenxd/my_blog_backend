@@ -1,6 +1,7 @@
 package token
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -83,8 +84,9 @@ func (manager *TokenManager) NewRefreshToken() (string, string, error) {
 }
 
 func (manager *TokenManager) HashRefreshToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return base64.URLEncoding.EncodeToString(hash[:])
+	mac := hmac.New(sha256.New, []byte(manager.secretKey))
+	mac.Write([]byte(token))
+	return base64.URLEncoding.EncodeToString(mac.Sum(nil))
 }
 
 func claimsToAuthPrincipal(claims *UserClaims) (*usecase.AuthenticatedUser, error) {

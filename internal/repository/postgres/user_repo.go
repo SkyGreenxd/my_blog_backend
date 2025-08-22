@@ -59,8 +59,13 @@ func (u *UserRepository) Update(ctx context.Context, user *domain.User) (*domain
 	const op = "UserRepository.Update"
 
 	userModel := toUserModel(user)
-	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(userModel)
+	updates := map[string]interface{}{
+		"username":      userModel.Username,
+		"email":         userModel.Email,
+		"password_hash": userModel.PasswordHash,
+	}
 
+	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(updates)
 	err := checkChangeQueryResult(result, e.ErrUserNotFound)
 	if err != nil {
 		return nil, e.Wrap(op, err)

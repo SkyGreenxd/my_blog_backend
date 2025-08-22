@@ -1,9 +1,10 @@
 package postgres
 
 import (
-	"github.com/google/uuid"
 	"my_blog_backend/internal/domain"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type UserModel struct {
@@ -44,4 +45,11 @@ type SessionModel struct {
 	ExpiresAt        time.Time
 }
 
-// TODO: реализовать хуки AfterDelete/BeforeDelete
+func (*ArticleModel) TableName() string {
+	return "articles"
+}
+func (*CategoryModel) TableName() string {
+	return "categories"
+}
+func (*SessionModel) TableName() string { return "sessions" }
+func (*UserModel) TableName() string    { return "users" }

@@ -57,7 +57,11 @@ func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*
 		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
-	newUser, err := domain.NewUser(userDto.Username, userDto.Email, hash)
+	newUser := domain.NewUser(userDto.Username, userDto.Email, hash)
+
+	if err := newUser.Validate(); err != nil {
+		return nil, e.Wrap(op, e.ErrUsernameIsForbidden)
+	}
 
 	userEntity, err := s.userRepo.Create(ctx, newUser)
 	if err != nil {
@@ -134,15 +138,26 @@ func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*
 	return toUserResponse(user), nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, userID uint) (*UserRes, error) {
+func (s *UserService) UpdateUser(ctx context.Context, userId uint, req *UpdateUserReq) (*UserRes, error) {
 	const op = "UserService.UpdateUser"
 
-	user, err := s.getUser(ctx, UserFilter{Id: &userID})
+	user, err := s.getUser(ctx, UserFilter{Id: &userId})
 	if err != nil {
 		if errors.Is(err, e.ErrUserNotFound) {
 			return nil, e.Wrap(op, e.ErrUserNotFound)
 		}
 		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	if req.Username != nil {
+		user.Username = *req.Username
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+
+	if err := user.Validate(); err != nil {
+		return nil, e.Wrap(op, err)
 	}
 
 	updateUser, err := s.userRepo.Update(ctx, user)
@@ -153,14 +168,22 @@ func (s *UserService) UpdateUser(ctx context.Context, userID uint) (*UserRes, er
 	return toUserResponse(updateUser), nil
 }
 
-func (s *UserService) ChangePassword(ctx context.Context, changePassword *ChangePasswordReq) error {
+func (s *UserService) ChangePassword(ctx context.Context, userId uint, changePassword *ChangePasswordReq) error {
 	const op = "UserService.ChangePassword"
 
-	user, err := s.getUser(ctx, UserFilter{Id: &changePassword.Id})
+	user, err := s.getUser(ctx, UserFilter{Id: &userId})
 	if err != nil {
 		if errors.Is(err, e.ErrUserNotFound) {
 			return e.Wrap(op, e.ErrUserNotFound)
 		}
+		return e.Wrap(op, e.ErrInternalServer)
+	}
+
+	if err := s.hashManager.Compare(changePassword.OldPassword, user.PasswordHash); err != nil {
+		if errors.Is(err, e.ErrMismatchedHashAndPassword) {
+			return e.Wrap(op, e.ErrInvalidCredentials)
+		}
+
 		return e.Wrap(op, e.ErrInternalServer)
 	}
 
@@ -188,19 +211,14 @@ func (s *UserService) RefreshSession(ctx context.Context, userRefreshToken strin
 
 	oldSession, err := s.verifyRefreshToken(ctx, userRefreshToken)
 	if err != nil {
-		if errors.Is(err, e.ErrRefreshTokenInvalid) {
-			return nil, e.Wrap(op, e.ErrRefreshTokenInvalid)
+		switch {
+		case errors.Is(err, e.ErrRefreshTokenInvalid),
+			errors.Is(err, e.ErrSessionRevoked),
+			errors.Is(err, e.ErrSessionExpired):
+			return nil, e.Wrap(op, e.ErrUnauthorized)
+		default:
+			return nil, e.Wrap(op, e.ErrInternalServer)
 		}
-
-		if errors.Is(err, e.ErrSessionRevoked) {
-			return nil, e.Wrap(op, e.ErrSessionRevoked)
-		}
-
-		if errors.Is(err, e.ErrSessionExpired) {
-			return nil, e.Wrap(op, e.ErrSessionExpired)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, oldSession.Id); err != nil {
@@ -240,19 +258,14 @@ func (s *UserService) LogoutUser(ctx context.Context, userRefreshToken string) e
 
 	session, err := s.verifyRefreshToken(ctx, userRefreshToken)
 	if err != nil {
-		if errors.Is(err, e.ErrRefreshTokenInvalid) {
-			return e.Wrap(op, e.ErrRefreshTokenInvalid)
+		switch {
+		case errors.Is(err, e.ErrRefreshTokenInvalid),
+			errors.Is(err, e.ErrSessionRevoked),
+			errors.Is(err, e.ErrSessionExpired):
+			return e.Wrap(op, e.ErrUnauthorized)
+		default:
+			return e.Wrap(op, e.ErrInternalServer)
 		}
-
-		if errors.Is(err, e.ErrSessionRevoked) {
-			return e.Wrap(op, e.ErrSessionRevoked)
-		}
-
-		if errors.Is(err, e.ErrSessionExpired) {
-			return e.Wrap(op, e.ErrSessionExpired)
-		}
-
-		return e.Wrap(op, e.ErrInternalServer)
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, session.Id); err != nil {

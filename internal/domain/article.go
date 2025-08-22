@@ -16,10 +16,6 @@ type Article struct {
 	Category   *Category
 }
 
-func (*Article) TableName() string {
-	return "articles"
-}
-
 func NewArticle(title, content string, authorId, CategoryId uint) *Article {
 	return &Article{
 		Title:      title,
