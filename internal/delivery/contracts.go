@@ -48,6 +48,14 @@ type ChangePasswordReq struct {
 	NewPassword string `json:"new_password" binding:"required,min=8,max=128,nospaces"`
 }
 
+type RefreshTokenReq struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type LogoutUserReq struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 func ToChangePasswordReq(req *ChangePasswordReq) *usecase.ChangePasswordReq {
 	return &usecase.ChangePasswordReq{
 		OldPassword: req.OldPassword,
