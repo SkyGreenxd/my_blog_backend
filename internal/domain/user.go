@@ -23,10 +23,6 @@ const (
 	RoleUser  Role = "user"
 )
 
-func (*User) TableName() string {
-	return "users"
-}
-
 func NewUser(username, email, passwordHash string) *User {
 	return &User{
 		Username:     username,
