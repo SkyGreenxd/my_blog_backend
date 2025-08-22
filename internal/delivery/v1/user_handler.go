@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"log"
 	"my_blog_backend/internal/delivery"
 	"my_blog_backend/pkg/e"
 	"net/http"
@@ -14,16 +15,18 @@ import (
 func (h *Handler) signUp(c *gin.Context) {
 	var req delivery.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": "bad request",
 		})
 		return
 	}
 
 	user, err := h.services.UserService.CreateUser(c.Request.Context(), delivery.ToServiceCreateUserReq(&req))
 	if err != nil {
+		log.Println(err)
 		if errors.Is(err, e.ErrUsernameIsExists) || errors.Is(err, e.ErrEmailIsExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			c.JSON(http.StatusConflict, gin.H{"error": "username or email is exists"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
@@ -36,6 +39,7 @@ func (h *Handler) signUp(c *gin.Context) {
 func (h *Handler) signIn(c *gin.Context) {
 	var req delivery.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid request body",
 		})
@@ -44,6 +48,7 @@ func (h *Handler) signIn(c *gin.Context) {
 
 	res, err := h.services.UserService.LoginUser(c.Request.Context(), delivery.ToLoginUserReq(&req))
 	if err != nil {
+		log.Println(err)
 		switch {
 		case errors.Is(err, e.ErrInvalidCredentials):
 			c.JSON(http.StatusUnauthorized, gin.H{"error": e.ErrInvalidCredentials.Error()})
@@ -69,6 +74,7 @@ func (h *Handler) getCurrentUser(c *gin.Context) {
 
 	user, err := h.services.UserService.GetUserById(c.Request.Context(), userId.(uint))
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
@@ -80,17 +86,20 @@ func (h *Handler) getUserById(c *gin.Context) {
 	idStr := c.Param("id")
 	userId, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
 	user, err := h.services.UserService.GetUserById(c.Request.Context(), uint(userId))
 	if err != nil {
+		log.Println(err)
 		if errors.Is(err, e.ErrUserNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -110,19 +119,22 @@ func (h *Handler) updateUser(c *gin.Context) {
 
 	var newData delivery.UpdateUserReq
 	if err := c.ShouldBindJSON(&newData); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": "bad request",
 		})
 		return
 	}
 
 	newUser, err := h.services.UserService.UpdateUser(c.Request.Context(), userId.(uint), delivery.ToUpdateUserReq(&newData))
 	if err != nil {
+		log.Println(err)
 		if errors.Is(err, e.ErrUserNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -142,6 +154,7 @@ func (h *Handler) changePassword(c *gin.Context) {
 
 	var req delivery.ChangePasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid request body",
 		})
@@ -149,13 +162,14 @@ func (h *Handler) changePassword(c *gin.Context) {
 	}
 
 	if err := h.services.UserService.ChangePassword(c.Request.Context(), userId.(uint), delivery.ToChangePasswordReq(&req)); err != nil {
+		log.Println(err)
 		switch {
 		case errors.Is(err, e.ErrUserNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		case errors.Is(err, e.ErrInvalidCredentials):
 			c.JSON(http.StatusUnauthorized, gin.H{"error": e.ErrInvalidCredentials.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 		return
 	}
@@ -164,21 +178,23 @@ func (h *Handler) changePassword(c *gin.Context) {
 }
 
 func (h *Handler) refreshSession(c *gin.Context) {
-	var refreshToken string
-	if err := c.ShouldBindJSON(&refreshToken); err != nil {
+	var req delivery.RefreshTokenReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid request body",
 		})
 		return
 	}
 
-	res, err := h.services.UserService.RefreshSession(c.Request.Context(), refreshToken)
+	res, err := h.services.UserService.RefreshSession(c.Request.Context(), req.RefreshToken)
 	if err != nil {
+		log.Println(err)
 		switch {
 		case errors.Is(err, e.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 		return
 	}
@@ -187,20 +203,22 @@ func (h *Handler) refreshSession(c *gin.Context) {
 }
 
 func (h *Handler) logout(c *gin.Context) {
-	var refreshToken string
-	if err := c.ShouldBindJSON(&refreshToken); err != nil {
+	var req delivery.LogoutUserReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid request body",
 		})
 		return
 	}
 
-	if err := h.services.UserService.LogoutUser(c.Request.Context(), refreshToken); err != nil {
+	if err := h.services.UserService.LogoutUser(c.Request.Context(), req.RefreshToken); err != nil {
+		log.Println(err)
 		switch {
 		case errors.Is(err, e.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 		return
 	}
