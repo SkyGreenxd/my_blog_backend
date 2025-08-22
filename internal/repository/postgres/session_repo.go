@@ -48,7 +48,7 @@ func (s *SessionRepository) GetByID(ctx context.Context, sessionId uint) (*domai
 func (s *SessionRepository) GetByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (*domain.Session, error) {
 	const op = "SessionRepository.GetByRefreshTokenHash"
 	var sessionModel SessionModel
-	result := s.DB.WithContext(ctx).First(&sessionModel, "refresh_token = ?", refreshTokenHash)
+	result := s.DB.WithContext(ctx).First(&sessionModel, "refresh_token_hash = ?", refreshTokenHash)
 	if err := checkGetQueryResult(result, e.ErrSessionNotFound); err != nil {
 		return nil, e.Wrap(op, err)
 	}
