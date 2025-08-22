@@ -39,8 +39,8 @@ type LoginUserRes struct {
 }
 
 type UpdateUserReq struct {
-	Username *string `json:"username" binding:"required,min=5,max=32,nospaces"`
-	Email    *string `json:"email" binding:"required,email,min=3,max=32,nospaces"`
+	Username *string `json:"username" binding:"omitempty,min=5,max=32,nospaces"`
+	Email    *string `json:"email" binding:"omitempty,email,min=3,max=32,nospaces"`
 }
 
 type ChangePasswordReq struct {
