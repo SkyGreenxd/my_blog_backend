@@ -41,6 +41,7 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 			users.Use(h.middleware.AuthMiddleware())
 			{
 				users.GET("/me", h.getCurrentUser)
+				users.POST("/me/update", h.updateUser)
 			}
 		}
 	}

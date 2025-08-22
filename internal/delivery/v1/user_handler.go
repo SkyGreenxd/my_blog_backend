@@ -36,6 +36,7 @@ func (h *Handler) signUp(c *gin.Context) {
 	c.JSON(http.StatusCreated, delivery.ToUserRes(user))
 }
 
+// TODO: возвращать данные в куки
 func (h *Handler) signIn(c *gin.Context) {
 	var req delivery.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -82,6 +83,7 @@ func (h *Handler) getCurrentUser(c *gin.Context) {
 	c.JSON(http.StatusOK, delivery.ToUserRes(user))
 }
 
+// TODO: должны еще выводиться в будущем посты пользователя
 func (h *Handler) getUserById(c *gin.Context) {
 	idStr := c.Param("id")
 	userId, err := strconv.Atoi(idStr)
@@ -123,6 +125,11 @@ func (h *Handler) updateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "bad request",
 		})
+		return
+	}
+
+	if newData.Username == nil && newData.Email == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no data provided to update"})
 		return
 	}
 
@@ -177,6 +184,7 @@ func (h *Handler) changePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
+// TODO: возвращать данные в куки
 func (h *Handler) refreshSession(c *gin.Context) {
 	var req delivery.RefreshTokenReq
 	if err := c.ShouldBindJSON(&req); err != nil {
