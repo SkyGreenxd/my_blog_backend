@@ -149,10 +149,20 @@ func (s *UserService) UpdateUser(ctx context.Context, userId uint, req *UpdateUs
 		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
+	if req.Username == nil && req.Email == nil {
+		return nil, e.Wrap(op, e.ErrNoDataToUpdate)
+	}
+
 	if req.Username != nil {
+		if err := user.ChangeUsername(*req.Username); err != nil {
+			return nil, e.Wrap(op, e.ErrUsernameIsSame)
+		}
 		user.Username = *req.Username
 	}
 	if req.Email != nil {
+		if err := user.ChangeEmail(*req.Email); err != nil {
+			return nil, e.Wrap(op, e.ErrEmailIsSame)
+		}
 		user.Email = *req.Email
 	}
 
@@ -269,6 +279,29 @@ func (s *UserService) LogoutUser(ctx context.Context, userRefreshToken string) e
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, session.Id); err != nil {
+		return e.Wrap(op, e.ErrInternalServer)
+	}
+
+	return nil
+}
+
+func (s *UserService) SetAdminRole(ctx context.Context, userId uint) error {
+	const op = "UserService.SetAdminRole"
+
+	user, err := s.userRepo.GetById(ctx, userId)
+	if err != nil {
+		if errors.Is(err, e.ErrUserNotFound) {
+			return e.Wrap(op, e.ErrUserNotFound)
+		}
+
+		return e.Wrap(op, e.ErrInternalServer)
+	}
+
+	if err := user.SetAdminRole(); err != nil {
+		return e.Wrap(op, e.ErrUserAlreadyAdmin)
+	}
+
+	if _, err := s.userRepo.Update(ctx, user); err != nil {
 		return e.Wrap(op, e.ErrInternalServer)
 	}
 
