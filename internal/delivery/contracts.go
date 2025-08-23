@@ -56,6 +56,16 @@ type LogoutUserReq struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type CreateCategoryReq struct {
+	CategoryName string `json:"category_name" binding:"required,min=3,max=128,nospaces"`
+	CategorySlug string `json:"category_slug" binding:"required,min=3,max=128,nospaces"`
+}
+
+type UpdateCategoryReq struct {
+	NewCategoryName *string `json:"new_category_name" binding:"omitempty,min=3,max=128,nospaces"`
+	NewCategorySlug *string `json:"new_category_slug" binding:"omitempty,min=3,max=128,nospaces"`
+}
+
 func ToChangePasswordReq(req *ChangePasswordReq) *usecase.ChangePasswordReq {
 	return &usecase.ChangePasswordReq{
 		OldPassword: req.OldPassword,
@@ -101,5 +111,29 @@ func ToLoginUserReq(req *LoginRequest) *usecase.LoginUserReq {
 	return &usecase.LoginUserReq{
 		Email:    req.Email,
 		Password: req.Password,
+	}
+}
+
+func ToCreateCategoryReq(req *CreateCategoryReq, userRole domain.Role) *usecase.CreateCategoryReq {
+	return &usecase.CreateCategoryReq{
+		CategoryName: req.CategoryName,
+		CategorySlug: req.CategorySlug,
+		UserRole:     userRole,
+	}
+}
+
+func ToDeleteCategoryReq(categorySlug string, userRole domain.Role) *usecase.DeleteCategoryReq {
+	return &usecase.DeleteCategoryReq{
+		UserRole:     userRole,
+		CategorySlug: categorySlug,
+	}
+}
+
+func ToUpdateCategoryReq(req UpdateCategoryReq, userRole domain.Role, categorySlug string) *usecase.UpdateCategoryReq {
+	return &usecase.UpdateCategoryReq{
+		UserRole:        userRole,
+		CategorySlug:    categorySlug,
+		NewCategoryName: req.NewCategoryName,
+		NewCategorySlug: req.NewCategorySlug,
 	}
 }
