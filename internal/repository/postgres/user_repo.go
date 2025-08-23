@@ -63,6 +63,7 @@ func (u *UserRepository) Update(ctx context.Context, user *domain.User) (*domain
 		"username":      userModel.Username,
 		"email":         userModel.Email,
 		"password_hash": userModel.PasswordHash,
+		"role":          userModel.Role,
 	}
 
 	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(updates)
@@ -71,7 +72,12 @@ func (u *UserRepository) Update(ctx context.Context, user *domain.User) (*domain
 		return nil, e.Wrap(op, err)
 	}
 
-	return toUserEntity(userModel), nil
+	newUserData, err := u.GetById(ctx, user.ID)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return newUserData, nil
 }
 
 func (u *UserRepository) Delete(ctx context.Context, id uint) error {
