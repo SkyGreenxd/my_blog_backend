@@ -34,6 +34,7 @@ type CategoryModel struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string `gorm:"size:128;unique;not null"`
+	Slug      string `gorm:"size:128;unique;not null"`
 }
 
 type SessionModel struct {
