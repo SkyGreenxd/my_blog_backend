@@ -11,7 +11,9 @@ var (
 	ErrUserDuplicate       = errors.New("user with such email or username already exists")
 	ErrUsernameIsForbidden = errors.New("username is forbidden")
 	ErrPasswordIsSame      = errors.New("password is same")
+	ErrUsernameIsSame      = errors.New("username is same")
 	ErrUserAlreadyAdmin    = errors.New("user is already admin")
+	ErrEmailIsSame         = errors.New("email is same")
 	// username
 	ErrUsernameEmpty        = errors.New("username is empty")
 	ErrUsernameTooShort     = errors.New("username is too short")
@@ -33,11 +35,12 @@ var (
 	ErrPasswordHasSpaces = errors.New("password contains spaces")
 
 	// categories
-	ErrCategoryIsExists = errors.New("category with such name already exists")
-	ErrCategoryNotFound = errors.New("category not found")
-	ErrCategoryTooShort = errors.New("category name is empty")
-	ErrCategoryTooLong  = errors.New("category name is too long")
-	ErrCategoryInUse    = errors.New("category is already in use")
+	ErrCategoryIsExists     = errors.New("category with such name already exists")
+	ErrCategorySlugIsExists = errors.New("category slug already exists")
+	ErrCategoryNotFound     = errors.New("category not found")
+	ErrCategoryTooShort     = errors.New("category name is empty")
+	ErrCategoryTooLong      = errors.New("category name is too long")
+	ErrCategoryInUse        = errors.New("category is already in use")
 
 	// articles
 	ErrTitleTooShort    = errors.New("title is too short")
@@ -65,6 +68,7 @@ var (
 	ErrTokenInvalid       = errors.New("token is invalid")
 	ErrInternalServer     = errors.New("internal server error")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrNoDataToUpdate     = errors.New("no data to update")
 )
 
 func Wrap(msg string, err error) error {
