@@ -64,26 +64,40 @@ type ChangePasswordReq struct {
 type CreateCategoryReq struct {
 	UserRole     domain.Role
 	CategoryName string
+	CategorySlug string
 }
 
 type UpdateCategoryReq struct {
 	UserRole        domain.Role
-	CategoryId      uint
-	NewCategoryName string
+	CategorySlug    string
+	NewCategoryName *string
+	NewCategorySlug *string
+}
+
+type UpdateCategoryRes struct {
+	CategoryName string
+	CategorySlug string
 }
 
 type DeleteCategoryReq struct {
-	UserRole   domain.Role
-	CategoryId uint
+	UserRole     domain.Role
+	CategorySlug string
+}
+
+type GetAllCategoriesRes struct {
+	CategoryId   uint
+	CategoryName string
+	Slug         string
 }
 
 type ArticleRes struct {
-	ArticleId uint
-	UserId    uint
-	Username  string
-	Title     string
-	Content   string
-	Category  string
+	ArticleId    uint
+	UserId       uint
+	Username     string
+	Title        string
+	Content      string
+	CategoryName string
+	CategorySlug string
 }
 
 type GetArticlesByUserRes struct {
@@ -102,16 +116,26 @@ type CreateArticleRes struct {
 	Title        string
 	Content      string
 	CategoryName string
+	CategorySlug string
 }
 
 type GetArticleRes struct {
 	Title        string
 	Content      string
 	CategoryName string
+	CategorySlug string
 	Username     string
 }
 
 type UpdateUserReq struct {
 	Username *string
 	Email    *string
+}
+
+type GetAllArticlesRes struct {
+	Title        string
+	Content      string
+	AuthorID     uint
+	CategorySlug string
+	CategoryName string
 }
