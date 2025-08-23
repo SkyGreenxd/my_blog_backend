@@ -51,7 +51,25 @@ func (u *User) ChangePassword(newPasswordHash string) error {
 	return nil
 }
 
-func (u *User) Promote() error {
+func (u *User) ChangeUsername(newUsername string) error {
+	if u.Username == newUsername {
+		return e.ErrUsernameIsSame
+	}
+
+	u.Username = newUsername
+	return nil
+}
+
+func (u *User) ChangeEmail(newEmail string) error {
+	if u.Email == newEmail {
+		return e.ErrEmailIsSame
+	}
+
+	u.Email = newEmail
+	return nil
+}
+
+func (u *User) SetAdminRole() error {
 	if u.Role == RoleAdmin {
 		return e.ErrUserAlreadyAdmin
 	}

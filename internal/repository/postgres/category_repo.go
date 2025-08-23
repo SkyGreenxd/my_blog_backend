@@ -41,6 +41,17 @@ func (c *CategoryRepository) GetByID(ctx context.Context, id uint) (*domain.Cate
 	return toCategoryEntity(&categoryModel), nil
 }
 
+func (c *CategoryRepository) GetBySlug(ctx context.Context, slug string) (*domain.Category, error) {
+	const op = "CategoryRepository.GetBySlug"
+	var categoryModel CategoryModel
+	result := c.DB.WithContext(ctx).First(&categoryModel, "slug = ?", slug)
+	if err := checkGetQueryResult(result, e.ErrCategoryNotFound); err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return toCategoryEntity(&categoryModel), nil
+}
+
 func (c *CategoryRepository) GetByName(ctx context.Context, name string) (*domain.Category, error) {
 	const op = "CategoryRepository.GetByName"
 	var categoryModel CategoryModel
@@ -52,19 +63,26 @@ func (c *CategoryRepository) GetByName(ctx context.Context, name string) (*domai
 	return toCategoryEntity(&categoryModel), nil
 }
 
-func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
+func (c *CategoryRepository) Update(ctx context.Context, category *domain.Category) (*domain.Category, error) {
 	const op = "CategoryRepository.Update"
 
+	categoryModel := toCategoryModel(category)
 	updates := map[string]interface{}{
-		"name":       category.Name,
+		"name":       categoryModel.Name,
 		"updated_at": time.Now().UTC(),
+		"slug":       categoryModel.Slug,
 	}
 	result := c.DB.WithContext(ctx).Model(&CategoryModel{}).Where("id = ?", category.ID).Updates(updates)
 	if err := checkChangeQueryResult(result, e.ErrCategoryNotFound); err != nil {
-		return e.Wrap(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	return nil
+	updCategory, err := c.GetByID(ctx, category.ID)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return updCategory, nil
 }
 
 func (c *CategoryRepository) Delete(ctx context.Context, id uint) error {
@@ -103,6 +121,7 @@ func toCategoryModel(c *domain.Category) *CategoryModel {
 		CreatedAt: c.CreatedAt,
 		UpdatedAt: c.UpdatedAt,
 		Name:      c.Name,
+		Slug:      c.Slug,
 	}
 }
 
@@ -112,5 +131,6 @@ func toCategoryEntity(c *CategoryModel) *domain.Category {
 		CreatedAt: c.CreatedAt,
 		UpdatedAt: c.UpdatedAt,
 		Name:      c.Name,
+		Slug:      c.Slug,
 	}
 }

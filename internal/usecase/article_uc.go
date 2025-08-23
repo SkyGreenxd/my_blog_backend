@@ -49,7 +49,7 @@ func (s *ArticleService) Create(ctx context.Context, req *CreateArticleReq) (*Cr
 	category, err := s.categoryRepo.GetByName(ctx, req.CategoryName)
 	if err != nil {
 		if errors.Is(err, e.ErrCategoryNotFound) {
-			return nil, e.ErrCategoryNotFound
+			return nil, e.Wrap(op, e.ErrCategoryNotFound)
 		}
 
 		return nil, e.Wrap(op, e.ErrInternalServer)
@@ -62,7 +62,7 @@ func (s *ArticleService) Create(ctx context.Context, req *CreateArticleReq) (*Cr
 		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
-	return toCreateArticleRes(result, category.Name), nil
+	return toCreateArticleRes(result, category.Slug, category.Name), nil
 }
 
 func (s *ArticleService) GetById(ctx context.Context, id uint) (*GetArticleRes, error) {
@@ -71,7 +71,7 @@ func (s *ArticleService) GetById(ctx context.Context, id uint) (*GetArticleRes, 
 	article, err := s.articleRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, e.ErrArticleNotFound) {
-			return nil, e.ErrArticleNotFound
+			return nil, e.Wrap(op, e.ErrArticleNotFound)
 		}
 
 		return nil, e.Wrap(op, e.ErrInternalServer)
@@ -80,14 +80,54 @@ func (s *ArticleService) GetById(ctx context.Context, id uint) (*GetArticleRes, 
 	return toGetArticleRes(article), nil
 }
 
+func (s *ArticleService) GetAllArticlesByCategory(ctx context.Context, slug string) ([]GetAllArticlesRes, error) {
+	const op = "ArticleService.GetAllArticlesByCategoryId"
+
+	category, err := s.categoryRepo.GetBySlug(ctx, slug)
+	if err != nil {
+		if errors.Is(err, e.ErrCategoryNotFound) {
+			return nil, e.Wrap(op, e.ErrCategoryNotFound)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	articles, err := s.articleRepo.ListByCategory(ctx, category.ID)
+	if err != nil {
+		if errors.Is(err, e.ErrArticleNotFound) {
+			return nil, e.Wrap(op, e.ErrArticleNotFound)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	res := make([]GetAllArticlesRes, len(articles))
+	for i, article := range articles {
+		res[i] = toGetAllArticlesRes(article)
+	}
+
+	return res, nil
+}
+
+func toGetAllArticlesRes(a domain.Article) GetAllArticlesRes {
+	return GetAllArticlesRes{
+		Title:        a.Title,
+		Content:      a.Content,
+		AuthorID:     a.AuthorID,
+		CategorySlug: a.Category.Slug,
+		CategoryName: a.Category.Name,
+	}
+}
+
 func toArticleRes(article *domain.Article) *ArticleRes {
 	return &ArticleRes{
-		ArticleId: article.ID,
-		UserId:    article.AuthorID,
-		Username:  article.Author.Username,
-		Title:     article.Title,
-		Content:   article.Content,
-		Category:  article.Category.Name,
+		ArticleId:    article.ID,
+		UserId:       article.AuthorID,
+		Username:     article.Author.Username,
+		Title:        article.Title,
+		Content:      article.Content,
+		CategoryName: article.Category.Name,
+		CategorySlug: article.Category.Slug,
 	}
 }
 
@@ -97,11 +137,12 @@ func toGetArticlesByUserRes(articles []*ArticleRes) *GetArticlesByUserRes {
 	}
 }
 
-func toCreateArticleRes(article *domain.Article, categoryName string) *CreateArticleRes {
+func toCreateArticleRes(article *domain.Article, categorySlug, categoryName string) *CreateArticleRes {
 	return &CreateArticleRes{
 		ArticleId:    article.ID,
 		Title:        article.Title,
 		Content:      article.Content,
+		CategorySlug: categorySlug,
 		CategoryName: categoryName,
 	}
 }
@@ -110,7 +151,7 @@ func toGetArticleRes(article *domain.Article) *GetArticleRes {
 	return &GetArticleRes{
 		Title:        article.Title,
 		Content:      article.Content,
-		CategoryName: article.Category.Name,
+		CategorySlug: article.Category.Slug,
 		Username:     article.Author.Username,
 	}
 }

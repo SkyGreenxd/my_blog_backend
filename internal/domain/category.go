@@ -10,11 +10,13 @@ type Category struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
+	Slug      string
 }
 
-func NewCategory(name string) *Category {
+func NewCategory(name, slug string) *Category {
 	return &Category{
 		Name: name,
+		Slug: slug,
 	}
 }
 
@@ -27,25 +29,11 @@ func (c *Category) ChangeName(newName string) error {
 	return nil
 }
 
-//func (c *Category) Validate() error {
-//	if err := ValidateCategoryName(c.Name); err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-//
-//func ValidateCategoryName(name string) error {
-//	name = strings.TrimSpace(name)
-//	length := utf8.RuneCountInString(name)
-//
-//	if length < 2 {
-//		return e.ErrCategoryTooShort
-//	}
-//
-//	if length > 128 {
-//		return e.ErrCategoryTooLong
-//	}
-//
-//	return nil
-//}
+func (c *Category) ChangeSlug(newSlug string) error {
+	if c.Slug == newSlug {
+		return e.ErrCategorySlugIsExists
+	}
+
+	c.Slug = newSlug
+	return nil
+}

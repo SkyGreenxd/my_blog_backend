@@ -41,7 +41,20 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 			users.Use(h.middleware.AuthMiddleware())
 			{
 				users.GET("/me", h.getCurrentUser)
-				users.POST("/me/update", h.updateUser)
+				users.PATCH("/me/update", h.updateUser)
+				users.PATCH("me/admin", h.setAdminRole)
+			}
+		}
+
+		categories := v1.Group("/categories")
+		{
+			categories.GET("", h.GetAllCategories)
+
+			categories.Use(h.middleware.AuthMiddleware())
+			{
+				categories.POST("", h.CreateCategory)
+				categories.PATCH("/:slug", h.UpdateCategory)
+				categories.DELETE("/:slug", h.DeleteCategory)
 			}
 		}
 	}
