@@ -128,16 +128,16 @@ func (h *Handler) updateUser(c *gin.Context) {
 		return
 	}
 
-	if newData.Username == nil && newData.Email == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no data provided to update"})
-		return
-	}
-
 	newUser, err := h.services.UserService.UpdateUser(c.Request.Context(), userId.(uint), delivery.ToUpdateUserReq(&newData))
 	if err != nil {
 		log.Println(err)
 		if errors.Is(err, e.ErrUserNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+
+		if errors.Is(err, e.ErrNoDataToUpdate) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "no data to update"})
 			return
 		}
 
@@ -232,4 +232,28 @@ func (h *Handler) logout(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (h *Handler) setAdminRole(c *gin.Context) {
+	userId, exists := c.Get("user_id")
+	if !exists {
+		if c.GetHeader("Authorization") == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID not found in context"})
+		}
+		return
+	}
+
+	if err := h.services.UserService.SetAdminRole(c.Request.Context(), userId.(uint)); err != nil {
+		log.Println(err)
+		switch {
+		case errors.Is(err, e.ErrUserNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		case errors.Is(err, e.ErrUserAlreadyAdmin):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user is already admin"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+	}
 }
