@@ -23,11 +23,11 @@ func (s *CategoryService) Create(ctx context.Context, req *CreateCategoryReq) (s
 		return "", e.Wrap(op, e.ErrPermissionDenied)
 	}
 
-	newCategory := domain.NewCategory(req.CategoryName)
+	newCategory := domain.NewCategory(req.CategoryName, req.CategorySlug)
 
 	categoryEntity, err := s.categoryRepo.Create(ctx, newCategory)
 	if err != nil {
-		if errors.Is(err, e.ErrCategoryInUse) {
+		if errors.Is(err, e.ErrCategoryIsExists) {
 			return "", e.Wrap(op, err)
 		}
 
@@ -37,7 +37,7 @@ func (s *CategoryService) Create(ctx context.Context, req *CreateCategoryReq) (s
 	return categoryEntity.Name, nil
 }
 
-func (s *CategoryService) GetAll(ctx context.Context) ([]string, error) {
+func (s *CategoryService) GetAll(ctx context.Context) ([]*GetAllCategoriesRes, error) {
 	const op = "CategoryService.GetAll"
 
 	categories, err := s.categoryRepo.ListAll(ctx)
@@ -45,39 +45,52 @@ func (s *CategoryService) GetAll(ctx context.Context) ([]string, error) {
 		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
-	result := make([]string, len(categories))
+	result := make([]*GetAllCategoriesRes, len(categories))
 	for i, category := range categories {
-		result[i] = category.Name
+		result[i] = ToGetAllCategoriesRes(&category)
 	}
 
 	return result, nil
 }
 
-func (s *CategoryService) Update(ctx context.Context, req *UpdateCategoryReq) error {
+func (s *CategoryService) Update(ctx context.Context, req *UpdateCategoryReq) (*UpdateCategoryRes, error) {
 	const op = "CategoryService.Update"
 
 	if req.UserRole != domain.RoleAdmin {
-		return e.Wrap(op, e.ErrPermissionDenied)
+		return nil, e.Wrap(op, e.ErrPermissionDenied)
 	}
 
-	category, err := s.categoryRepo.GetByID(ctx, req.CategoryId)
+	category, err := s.categoryRepo.GetBySlug(ctx, req.CategorySlug)
 	if err != nil {
 		if errors.Is(err, e.ErrCategoryNotFound) {
-			return e.Wrap(op, e.ErrCategoryNotFound)
+			return nil, e.Wrap(op, e.ErrCategoryNotFound)
 		}
 
-		return e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, e.ErrInternalServer)
 	}
 
-	if err := category.ChangeName(req.NewCategoryName); err != nil {
-		return e.Wrap(op, err)
+	if req.NewCategoryName == nil && req.NewCategorySlug == nil {
+		return nil, e.Wrap(op, e.ErrNoDataToUpdate)
 	}
 
-	if err := s.categoryRepo.Update(ctx, category); err != nil {
-		return e.Wrap(op, e.ErrInternalServer)
+	if req.NewCategoryName != nil {
+		if err := category.ChangeName(*req.NewCategoryName); err != nil {
+			return nil, e.Wrap(op, err)
+		}
 	}
 
-	return nil
+	if req.NewCategorySlug != nil {
+		if err := category.ChangeSlug(*req.NewCategorySlug); err != nil {
+			return nil, e.Wrap(op, err)
+		}
+	}
+
+	updCategory, err := s.categoryRepo.Update(ctx, category)
+	if err != nil {
+		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	return ToUpdateCategoryRes(updCategory), nil
 }
 
 func (s *CategoryService) Delete(ctx context.Context, req *DeleteCategoryReq) error {
@@ -87,7 +100,16 @@ func (s *CategoryService) Delete(ctx context.Context, req *DeleteCategoryReq) er
 		return e.Wrap(op, e.ErrPermissionDenied)
 	}
 
-	if err := s.categoryRepo.Delete(ctx, req.CategoryId); err != nil {
+	category, err := s.categoryRepo.GetBySlug(ctx, req.CategorySlug)
+	if err != nil {
+		if errors.Is(err, e.ErrCategoryNotFound) {
+			return e.Wrap(op, e.ErrCategoryNotFound)
+		}
+
+		return e.Wrap(op, e.ErrInternalServer)
+	}
+
+	if err := s.categoryRepo.Delete(ctx, category.ID); err != nil {
 		if errors.Is(err, e.ErrCategoryNotFound) {
 			return e.Wrap(op, e.ErrCategoryNotFound)
 		}
@@ -100,4 +122,19 @@ func (s *CategoryService) Delete(ctx context.Context, req *DeleteCategoryReq) er
 	}
 
 	return nil
+}
+
+func ToGetAllCategoriesRes(category *domain.Category) *GetAllCategoriesRes {
+	return &GetAllCategoriesRes{
+		CategoryId:   category.ID,
+		CategoryName: category.Name,
+		Slug:         category.Slug,
+	}
+}
+
+func ToUpdateCategoryRes(category *domain.Category) *UpdateCategoryRes {
+	return &UpdateCategoryRes{
+		CategoryName: category.Name,
+		CategorySlug: category.Slug,
+	}
 }
