@@ -116,6 +116,99 @@ func (s *ArticleService) GetAllArticlesByCategory(ctx context.Context, slug stri
 	return res, nil
 }
 
+func (s *ArticleService) Delete(ctx context.Context, id uint) error {
+	const op = "ArticleService.Delete"
+
+	if err := s.articleRepo.Delete(ctx, id); err != nil {
+		if errors.Is(err, e.ErrArticleNotFound) {
+			return e.Wrap(op, e.ErrArticleNotFound)
+		}
+
+		return e.Wrap(op, e.ErrInternalServer)
+	}
+
+	return nil
+}
+
+// TODO: доделать функцию апдейт
+func (s *ArticleService) Update(ctx context.Context, req *UpdateArticleReq) (*UpdateArticleRes, error) {
+	const op = "ArticleService.Update"
+
+	article, err := s.articleRepo.GetByID(ctx, req.ArticleId)
+	if err != nil {
+		if errors.Is(err, e.ErrArticleNotFound) {
+			return nil, e.Wrap(op, e.ErrArticleNotFound)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	if err := article.CheckAuthor(req.UserId); err != nil {
+		return nil, e.Wrap(op, e.ErrUserNotAuthor)
+	}
+
+	if req.Title == nil && req.Content == nil && req.CategorySlug == nil {
+		return nil, e.Wrap(op, e.ErrNoDataToUpdate)
+	}
+
+	if req.Title != nil {
+		if err := article.ChangeTitle(*req.Title); err != nil {
+			return nil, e.Wrap(op, e.ErrArticleNameIsExists)
+		}
+	}
+
+	if req.Content != nil {
+		if err := article.ChangeContent(*req.Content); err != nil {
+			return nil, e.Wrap(op, e.ErrArticleContentIsExists)
+		}
+	}
+
+	if req.CategorySlug != nil {
+		category, err := s.categoryRepo.GetBySlug(ctx, *req.CategorySlug)
+		if err != nil {
+			if errors.Is(err, e.ErrCategoryNotFound) {
+				return nil, e.Wrap(op, e.ErrCategoryNotFound)
+			}
+
+			return nil, e.Wrap(op, e.ErrInternalServer)
+		}
+
+		if err := article.ChangeCategory(category); err != nil {
+			return nil, e.Wrap(op, e.ErrArticleCategoryIsExists)
+		}
+	}
+
+	updArticle, err := s.articleRepo.Update(ctx, article)
+	if err != nil {
+		if errors.Is(err, e.ErrArticleNotFound) {
+			return nil, e.Wrap(op, e.ErrArticleNotFound)
+		}
+
+		return nil, e.Wrap(op, e.ErrInternalServer)
+	}
+
+	return toUpdateArticleRes(updArticle), nil
+}
+
+func toCategoryRes(category *domain.Category) *CategoryRes {
+	return &CategoryRes{
+		CategoryId:   category.ID,
+		CategoryName: category.Name,
+		CategorySlug: category.Slug,
+	}
+}
+
+func toUpdateArticleRes(a *domain.Article) *UpdateArticleRes {
+	return &UpdateArticleRes{
+		ArticleId: a.ID,
+		Title:     a.Title,
+		Content:   a.Content,
+		Category:  *toCategoryRes(a.Category),
+		AuthorID:  a.Author.ID,
+		UpdatedAt: a.UpdatedAt,
+	}
+}
+
 func toGetAllArticlesRes(a domain.Article) GetAllArticlesRes {
 	return GetAllArticlesRes{
 		Title:        a.Title,
