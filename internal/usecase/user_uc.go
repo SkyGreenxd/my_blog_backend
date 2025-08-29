@@ -197,17 +197,16 @@ func (s *UserService) ChangePassword(ctx context.Context, userId uint, changePas
 		return e.Wrap(op, e.ErrInternalServer)
 	}
 
+	if err := s.hashManager.Compare(changePassword.NewPassword, user.PasswordHash); err == nil {
+		return e.Wrap(op, e.ErrPasswordIsSame)
+	}
+
 	newPassHash, err := s.hashManager.HashPassword(changePassword.NewPassword)
 	if err != nil {
 		return e.Wrap(op, e.ErrInternalServer)
 	}
 
-	if err := user.ChangePassword(newPassHash); err != nil {
-		if errors.Is(err, e.ErrPasswordIsSame) {
-			return e.Wrap(op, e.ErrPasswordIsSame)
-		}
-		return e.Wrap(op, e.ErrInternalServer)
-	}
+	user.PasswordHash = newPassHash
 
 	if _, err := s.userRepo.Update(ctx, user); err != nil {
 		return e.Wrap(op, e.ErrInternalServer)
