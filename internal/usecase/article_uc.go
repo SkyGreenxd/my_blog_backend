@@ -46,7 +46,7 @@ func (s *ArticleService) GetAllArticlesByUserId(ctx context.Context, userId uint
 func (s *ArticleService) Create(ctx context.Context, req *CreateArticleReq) (*CreateArticleRes, error) {
 	const op = "ArticleService.Create"
 
-	category, err := s.categoryRepo.GetByName(ctx, req.CategoryName)
+	category, err := s.categoryRepo.GetBySlug(ctx, req.CategorySlug)
 	if err != nil {
 		if errors.Is(err, e.ErrCategoryNotFound) {
 			return nil, e.Wrap(op, e.ErrCategoryNotFound)
@@ -56,6 +56,13 @@ func (s *ArticleService) Create(ctx context.Context, req *CreateArticleReq) (*Cr
 	}
 
 	newArticle := domain.NewArticle(req.Title, req.Content, req.UserId, category.ID)
+	if err := newArticle.Validate(); err != nil {
+		return nil, e.Wrap(op, e.ErrArticleDataIsInvalid)
+	}
+
+	if err := s.articleRepo.ExistsByTitleContentAuthor(ctx, newArticle); err != nil {
+		return nil, e.Wrap(op, e.ErrArticleDataIsInvalid)
+	}
 
 	result, err := s.articleRepo.Create(ctx, newArticle)
 	if err != nil {
