@@ -43,14 +43,6 @@ func (u *User) Validate() error {
 	return nil
 }
 
-func (u *User) ChangePassword(newPasswordHash string) error {
-	if u.PasswordHash == newPasswordHash {
-		return e.ErrPasswordIsSame
-	}
-	u.PasswordHash = newPasswordHash
-	return nil
-}
-
 func (u *User) ChangeUsername(newUsername string) error {
 	if u.Username == newUsername {
 		return e.ErrUsernameIsSame
