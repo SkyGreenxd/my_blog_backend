@@ -108,7 +108,7 @@ type CreateArticleReq struct {
 	UserId       uint
 	Title        string
 	Content      string
-	CategoryName string
+	CategorySlug string
 }
 
 type CreateArticleRes struct {
@@ -138,4 +138,27 @@ type GetAllArticlesRes struct {
 	AuthorID     uint
 	CategorySlug string
 	CategoryName string
+}
+
+type UpdateArticleReq struct {
+	UserId       uint
+	ArticleId    uint
+	Title        *string
+	Content      *string
+	CategorySlug *string
+}
+
+type UpdateArticleRes struct {
+	AuthorID  uint
+	ArticleId uint
+	Title     string
+	Content   string
+	Category  CategoryRes
+	UpdatedAt time.Time
+}
+
+type CategoryRes struct {
+	CategoryName string
+	CategorySlug string
+	CategoryId   uint
 }
