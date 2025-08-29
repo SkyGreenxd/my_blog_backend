@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 
@@ -93,6 +94,27 @@ func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint)
 	const op = "ArticleRepository.ListByCategory"
 	query := a.DB.WithContext(ctx).Where("category_id = ?", categoryID)
 	return a.listArticles(ctx, op, query)
+}
+
+func (a *ArticleRepository) ExistsByTitleContentAuthor(ctx context.Context, article *domain.Article) error {
+	const op = "ArticleRepository.ExistsByTitleContentAuthor"
+
+	articleModel := toArticleModel(article)
+	result := a.DB.WithContext(ctx).Where(map[string]interface{}{
+		"title":     articleModel.Title,
+		"content":   articleModel.Content,
+		"author_id": articleModel.AuthorID,
+	}).First(&articleModel)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil
+	}
+
+	if result.Error != nil {
+		return e.Wrap(op, result.Error)
+	}
+
+	return e.Wrap(op, e.ErrArticleDuplicate)
 }
 
 func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *gorm.DB) ([]domain.Article, error) {

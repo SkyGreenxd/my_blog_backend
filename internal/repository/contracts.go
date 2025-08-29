@@ -19,11 +19,12 @@ type UserRepository interface {
 type ArticleRepository interface {
 	Create(ctx context.Context, article *domain.Article) (*domain.Article, error)
 	GetByID(ctx context.Context, id uint) (*domain.Article, error)
-	Update(ctx context.Context, article *domain.Article) error
+	Update(ctx context.Context, article *domain.Article) (*domain.Article, error)
 	Delete(ctx context.Context, id uint) error
 	ListAll(ctx context.Context) ([]domain.Article, error)
 	ListByAuthor(ctx context.Context, authorID uint) ([]domain.Article, error)
 	ListByCategory(ctx context.Context, categoryID uint) ([]domain.Article, error)
+	ExistsByTitleContentAuthor(ctx context.Context, article *domain.Article) error
 }
 
 type CategoryRepository interface {
