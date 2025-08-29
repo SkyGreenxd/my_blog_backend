@@ -46,15 +46,25 @@ func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Artic
 	return toArticleEntity(&articleModel), nil
 }
 
-func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) error {
+func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) (*domain.Article, error) {
 	const op = "ArticleRepository.Update"
 	articleModel := toArticleModel(article)
-	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(articleModel)
+	updates := map[string]interface{}{
+		"category_id": articleModel.Category.ID,
+		"title":       articleModel.Title,
+		"content":     articleModel.Content,
+	}
+	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(updates)
 	if err := checkChangeQueryResult(result, e.ErrArticleNotFound); err != nil {
-		return e.Wrap(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	return nil
+	updArticle, err := a.GetByID(ctx, articleModel.ID)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return updArticle, nil
 }
 
 func (a *ArticleRepository) Delete(ctx context.Context, id uint) error {
