@@ -13,6 +13,7 @@ type CreateUserRequest struct {
 }
 
 type UserRes struct {
+	Id       uint        `json:"id"`
 	Username string      `json:"username"`
 	Email    string      `json:"email"`
 	Role     domain.Role `json:"role"`
@@ -85,6 +86,41 @@ type UpdateArticleReq struct {
 	CategorySlug *string `json:"category_slug" binding:"omitempty,min=3,max=128,nospaces"`
 }
 
+func ToDeleteArticleReq(userId, articleId uint) *usecase.DeleteArticleReq {
+	return &usecase.DeleteArticleReq{
+		UserId:    userId,
+		ArticleId: articleId,
+	}
+}
+
+type ArticleRes struct {
+	ArticleId uint
+	Title     string
+	Content   string
+	Author    UserRes
+	Category  CategoryRes
+}
+
+type GetArticlesByUserRes struct {
+	Articles []*ArticleRes `json:"articles"`
+}
+
+func ToArticleRes(res *usecase.ArticleRes) *ArticleRes {
+	return &ArticleRes{
+		ArticleId: res.ArticleId,
+		Title:     res.Title,
+		Content:   res.Content,
+		Author:    *ToUserRes(&res.Author),
+		Category:  *ToCategoryRes(&res.Category),
+	}
+}
+
+func ToGetArticlesByUserRes(articles []*ArticleRes) *GetArticlesByUserRes {
+	return &GetArticlesByUserRes{
+		Articles: articles,
+	}
+}
+
 func ToUpdateArticleReq(req *UpdateArticleReq, userId, articleId uint) *usecase.UpdateArticleReq {
 	return &usecase.UpdateArticleReq{
 		UserId:       userId,
@@ -116,12 +152,12 @@ func ToUpdateArticleRes(res *usecase.UpdateArticleRes) *UpdateArticleRes {
 		ArticleId: res.ArticleId,
 		Title:     res.Title,
 		Content:   res.Content,
-		Category:  *toCategoryRes(&res.Category),
+		Category:  *ToCategoryRes(&res.Category),
 		UpdatedAt: res.UpdatedAt,
 	}
 }
 
-func toCategoryRes(res *usecase.CategoryRes) *CategoryRes {
+func ToCategoryRes(res *usecase.CategoryRes) *CategoryRes {
 	return &CategoryRes{
 		CategoryName: res.CategoryName,
 		CategorySlug: res.CategorySlug,
@@ -164,6 +200,7 @@ func ToServiceCreateUserReq(request *CreateUserRequest) *usecase.CreateUserReq {
 
 func ToUserRes(res *usecase.UserRes) *UserRes {
 	return &UserRes{
+		Id:       res.Id,
 		Username: res.Username,
 		Email:    res.Email,
 		Role:     res.Role,
