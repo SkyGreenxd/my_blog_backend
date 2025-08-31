@@ -8,7 +8,6 @@ import (
 	"my_blog_backend/pkg/e"
 )
 
-// TODO: Реализовать сервис, перенести логику валидации сюда
 type ArticleService struct {
 	articleRepo  repository.ArticleRepository
 	userRepo     repository.UserRepository
@@ -23,16 +22,16 @@ func NewArticleService(a repository.ArticleRepository, u repository.UserReposito
 	}
 }
 
-func (s *ArticleService) GetAllArticlesByUserId(ctx context.Context, userId uint) (*GetArticlesByUserRes, error) {
+func (s *ArticleService) GetAllArticlesByUserId(ctx context.Context, userId uint) (*GetArticles, error) {
 	const op = "ArticleService.GetAllArticlesByUserId"
 
 	articles, err := s.articleRepo.ListByAuthor(ctx, userId)
 	if err != nil {
 		if errors.Is(err, e.ErrArticleNotFound) {
-			return &GetArticlesByUserRes{[]*ArticleRes{}}, nil
+			return &GetArticles{[]*ArticleRes{}}, nil
 		}
 
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	res := make([]*ArticleRes, len(articles))
@@ -48,11 +47,7 @@ func (s *ArticleService) Create(ctx context.Context, req *CreateArticleReq) (*Cr
 
 	category, err := s.categoryRepo.GetBySlug(ctx, req.CategorySlug)
 	if err != nil {
-		if errors.Is(err, e.ErrCategoryNotFound) {
-			return nil, e.Wrap(op, e.ErrCategoryNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	newArticle := domain.NewArticle(req.Title, req.Content, req.UserId, category.ID)
@@ -66,81 +61,73 @@ func (s *ArticleService) Create(ctx context.Context, req *CreateArticleReq) (*Cr
 
 	result, err := s.articleRepo.Create(ctx, newArticle)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toCreateArticleRes(result, category.Slug, category.Name), nil
 }
 
-func (s *ArticleService) GetById(ctx context.Context, id uint) (*GetArticleRes, error) {
+func (s *ArticleService) GetById(ctx context.Context, id uint) (*ArticleRes, error) {
 	const op = "ArticleService.GetById"
 
 	article, err := s.articleRepo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, e.ErrArticleNotFound) {
-			return nil, e.Wrap(op, e.ErrArticleNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
-	return toGetArticleRes(article), nil
+	return toArticleRes(article), nil
 }
 
-func (s *ArticleService) GetAllArticlesByCategory(ctx context.Context, slug string) ([]GetAllArticlesRes, error) {
+func (s *ArticleService) GetAllArticlesByCategory(ctx context.Context, slug string) (*GetArticles, error) {
 	const op = "ArticleService.GetAllArticlesByCategoryId"
 
 	category, err := s.categoryRepo.GetBySlug(ctx, slug)
 	if err != nil {
-		if errors.Is(err, e.ErrCategoryNotFound) {
-			return nil, e.Wrap(op, e.ErrCategoryNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	articles, err := s.articleRepo.ListByCategory(ctx, category.ID)
 	if err != nil {
 		if errors.Is(err, e.ErrArticleNotFound) {
-			return nil, e.Wrap(op, e.ErrArticleNotFound)
+			return &GetArticles{[]*ArticleRes{}}, nil
 		}
 
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
-	res := make([]GetAllArticlesRes, len(articles))
+	res := make([]*ArticleRes, len(articles))
 	for i, article := range articles {
-		res[i] = toGetAllArticlesRes(article)
+		res[i] = toArticleRes(&article)
 	}
 
-	return res, nil
+	return toGetArticlesByUserRes(res), nil
 }
 
-func (s *ArticleService) Delete(ctx context.Context, id uint) error {
+func (s *ArticleService) Delete(ctx context.Context, req *DeleteArticleReq) error {
 	const op = "ArticleService.Delete"
 
-	if err := s.articleRepo.Delete(ctx, id); err != nil {
-		if errors.Is(err, e.ErrArticleNotFound) {
-			return e.Wrap(op, e.ErrArticleNotFound)
-		}
+	article, err := s.articleRepo.GetByID(ctx, req.ArticleId)
+	if err != nil {
+		return e.Wrap(op, err)
+	}
 
-		return e.Wrap(op, e.ErrInternalServer)
+	if err := article.CheckAuthor(req.UserId); err != nil {
+		return e.Wrap(op, e.ErrUserNotAuthor)
+	}
+
+	if err := s.articleRepo.Delete(ctx, req.ArticleId); err != nil {
+		return e.Wrap(op, err)
 	}
 
 	return nil
 }
 
-// TODO: доделать функцию апдейт
 func (s *ArticleService) Update(ctx context.Context, req *UpdateArticleReq) (*UpdateArticleRes, error) {
 	const op = "ArticleService.Update"
 
 	article, err := s.articleRepo.GetByID(ctx, req.ArticleId)
 	if err != nil {
-		if errors.Is(err, e.ErrArticleNotFound) {
-			return nil, e.Wrap(op, e.ErrArticleNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	if err := article.CheckAuthor(req.UserId); err != nil {
@@ -166,11 +153,7 @@ func (s *ArticleService) Update(ctx context.Context, req *UpdateArticleReq) (*Up
 	if req.CategorySlug != nil {
 		category, err := s.categoryRepo.GetBySlug(ctx, *req.CategorySlug)
 		if err != nil {
-			if errors.Is(err, e.ErrCategoryNotFound) {
-				return nil, e.Wrap(op, e.ErrCategoryNotFound)
-			}
-
-			return nil, e.Wrap(op, e.ErrInternalServer)
+			return nil, e.Wrap(op, err)
 		}
 
 		if err := article.ChangeCategory(category); err != nil {
@@ -180,11 +163,7 @@ func (s *ArticleService) Update(ctx context.Context, req *UpdateArticleReq) (*Up
 
 	updArticle, err := s.articleRepo.Update(ctx, article)
 	if err != nil {
-		if errors.Is(err, e.ErrArticleNotFound) {
-			return nil, e.Wrap(op, e.ErrArticleNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toUpdateArticleRes(updArticle), nil
@@ -225,30 +204,18 @@ func toUpdateArticleRes(a *domain.Article) *UpdateArticleRes {
 	}
 }
 
-func toGetAllArticlesRes(a domain.Article) GetAllArticlesRes {
-	return GetAllArticlesRes{
-		Title:        a.Title,
-		Content:      a.Content,
-		AuthorID:     a.AuthorID,
-		CategorySlug: a.Category.Slug,
-		CategoryName: a.Category.Name,
-	}
-}
-
 func toArticleRes(article *domain.Article) *ArticleRes {
 	return &ArticleRes{
-		ArticleId:    article.ID,
-		UserId:       article.AuthorID,
-		Username:     article.Author.Username,
-		Title:        article.Title,
-		Content:      article.Content,
-		CategoryName: article.Category.Name,
-		CategorySlug: article.Category.Slug,
+		ArticleId: article.ID,
+		Title:     article.Title,
+		Content:   article.Content,
+		Author:    *toUserResponse(article.Author),
+		Category:  *toCategoryRes(article.Category),
 	}
 }
 
-func toGetArticlesByUserRes(articles []*ArticleRes) *GetArticlesByUserRes {
-	return &GetArticlesByUserRes{
+func toGetArticlesByUserRes(articles []*ArticleRes) *GetArticles {
+	return &GetArticles{
 		Articles: articles,
 	}
 }
@@ -260,14 +227,5 @@ func toCreateArticleRes(article *domain.Article, categorySlug, categoryName stri
 		Content:      article.Content,
 		CategorySlug: categorySlug,
 		CategoryName: categoryName,
-	}
-}
-
-func toGetArticleRes(article *domain.Article) *GetArticleRes {
-	return &GetArticleRes{
-		Title:        article.Title,
-		Content:      article.Content,
-		CategorySlug: article.Category.Slug,
-		Username:     article.Author.Username,
 	}
 }
