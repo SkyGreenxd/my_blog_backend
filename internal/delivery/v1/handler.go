@@ -45,7 +45,7 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 				users.GET("/me", h.getCurrentUser)
 				users.GET("/me/articles", h.getArticlesByUserId)
 				users.PATCH("/me/update", h.updateUser)
-				users.PATCH("me/admin", h.setAdminRole)
+				// users.PATCH("me/admin", h.setAdminRole)
 			}
 		}
 
