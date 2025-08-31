@@ -79,6 +79,9 @@ func ErrorToHttpRes(err error, c *gin.Context) {
 	case errors.Is(err, e.ErrArticleDataIsInvalid):
 		code = http.StatusUnprocessableEntity
 		message = "title or content of the article is invalid"
+	case errors.Is(err, e.ErrCategorySlugIsExists):
+		code = http.StatusUnprocessableEntity
+		message = "category slug is exists"
 	default:
 		code = http.StatusInternalServerError
 		message = "internal server error"
