@@ -5,6 +5,7 @@ import (
 	"my_blog_backend/internal/usecase"
 	"my_blog_backend/pkg/e"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,13 +20,22 @@ func NewMiddleware(tokenManager usecase.TokenManager) *Middleware {
 
 func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		jwtToken := c.GetHeader("Authorization")
-		if jwtToken == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": e.ErrUnauthorized.Error(),
 			})
 			return
 		}
+
+		const prefix = "Bearer "
+		if !strings.HasPrefix(authHeader, prefix) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid authorization header format",
+			})
+			return
+		}
+		jwtToken := strings.TrimPrefix(authHeader, prefix)
 
 		authenticatedUser, err := m.tokenManager.VerifyJWT(jwtToken)
 		if err != nil {

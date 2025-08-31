@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 
@@ -46,15 +47,25 @@ func (a *ArticleRepository) GetByID(ctx context.Context, id uint) (*domain.Artic
 	return toArticleEntity(&articleModel), nil
 }
 
-func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) error {
+func (a *ArticleRepository) Update(ctx context.Context, article *domain.Article) (*domain.Article, error) {
 	const op = "ArticleRepository.Update"
 	articleModel := toArticleModel(article)
-	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(articleModel)
+	updates := map[string]interface{}{
+		"category_id": articleModel.Category.ID,
+		"title":       articleModel.Title,
+		"content":     articleModel.Content,
+	}
+	result := a.DB.WithContext(ctx).Model(&ArticleModel{}).Where("id = ?", articleModel.ID).Updates(updates)
 	if err := checkChangeQueryResult(result, e.ErrArticleNotFound); err != nil {
-		return e.Wrap(op, err)
+		return nil, e.Wrap(op, err)
 	}
 
-	return nil
+	updArticle, err := a.GetByID(ctx, articleModel.ID)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	return updArticle, nil
 }
 
 func (a *ArticleRepository) Delete(ctx context.Context, id uint) error {
@@ -83,6 +94,27 @@ func (a *ArticleRepository) ListByCategory(ctx context.Context, categoryID uint)
 	const op = "ArticleRepository.ListByCategory"
 	query := a.DB.WithContext(ctx).Where("category_id = ?", categoryID)
 	return a.listArticles(ctx, op, query)
+}
+
+func (a *ArticleRepository) ExistsByTitleContentAuthor(ctx context.Context, article *domain.Article) error {
+	const op = "ArticleRepository.ExistsByTitleContentAuthor"
+
+	articleModel := toArticleModel(article)
+	result := a.DB.WithContext(ctx).Where(map[string]interface{}{
+		"title":     articleModel.Title,
+		"content":   articleModel.Content,
+		"author_id": articleModel.AuthorID,
+	}).First(&articleModel)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil
+	}
+
+	if result.Error != nil {
+		return e.Wrap(op, result.Error)
+	}
+
+	return e.Wrap(op, e.ErrArticleDuplicate)
 }
 
 func (a *ArticleRepository) listArticles(ctx context.Context, op string, query *gorm.DB) ([]domain.Article, error) {

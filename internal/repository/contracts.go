@@ -11,6 +11,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) (*domain.User, error)
 	GetById(ctx context.Context, id uint) (*domain.User, error)
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
+	GetByUsername(ctx context.Context, username string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) (*domain.User, error)
 	Delete(ctx context.Context, id uint) error
 	ExistsByEmailOrUsername(ctx context.Context, email, username string) error
@@ -19,11 +20,12 @@ type UserRepository interface {
 type ArticleRepository interface {
 	Create(ctx context.Context, article *domain.Article) (*domain.Article, error)
 	GetByID(ctx context.Context, id uint) (*domain.Article, error)
-	Update(ctx context.Context, article *domain.Article) error
+	Update(ctx context.Context, article *domain.Article) (*domain.Article, error)
 	Delete(ctx context.Context, id uint) error
 	ListAll(ctx context.Context) ([]domain.Article, error)
 	ListByAuthor(ctx context.Context, authorID uint) ([]domain.Article, error)
 	ListByCategory(ctx context.Context, categoryID uint) ([]domain.Article, error)
+	ExistsByTitleContentAuthor(ctx context.Context, article *domain.Article) error
 }
 
 type CategoryRepository interface {

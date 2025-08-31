@@ -25,19 +25,7 @@ func (u *UserRepository) Create(ctx context.Context, user *domain.User) (*domain
 
 	userModel := toUserModel(user)
 	if err := u.DB.WithContext(ctx).Create(userModel).Error; err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			switch pgErr.ConstraintName {
-			case "idx_username":
-				return nil, e.Wrap(op, e.ErrUsernameIsExists)
-			case "idx_email":
-				return nil, e.Wrap(op, e.ErrEmailIsExists)
-			default:
-				return nil, e.Wrap(op, e.ErrUserDuplicate)
-			}
-		}
-
-		return nil, e.Wrap(op, err)
+		return nil, e.Wrap(op, errUserDuplicate(err))
 	}
 
 	return toUserEntity(userModel), nil
@@ -55,6 +43,12 @@ func (u *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	return u.getUser(ctx, op, query)
 }
 
+func (u *UserRepository) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
+	const op = "UserRepository.GetByUsername"
+	query := u.DB.WithContext(ctx).Where("username = ?", username)
+	return u.getUser(ctx, op, query)
+}
+
 func (u *UserRepository) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
 	const op = "UserRepository.Update"
 
@@ -67,9 +61,12 @@ func (u *UserRepository) Update(ctx context.Context, user *domain.User) (*domain
 	}
 
 	result := u.DB.WithContext(ctx).Model(&UserModel{}).Where("id = ?", userModel.ID).Updates(updates)
-	err := checkChangeQueryResult(result, e.ErrUserNotFound)
-	if err != nil {
-		return nil, e.Wrap(op, err)
+	if err := checkChangeQueryResult(result, e.ErrUserNotFound); err != nil {
+		if errors.Is(err, e.ErrUserNotFound) {
+			return nil, e.Wrap(op, err)
+		}
+
+		return nil, e.Wrap(op, errUserDuplicate(err))
 	}
 
 	newUserData, err := u.GetById(ctx, user.ID)
@@ -155,4 +152,20 @@ func (u *UserRepository) getUser(ctx context.Context, op string, query *gorm.DB)
 	}
 
 	return toUserEntity(&userModel), nil
+}
+
+func errUserDuplicate(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "idx_username":
+			return e.ErrUsernameIsExists
+		case "idx_email":
+			return e.ErrEmailIsExists
+		default:
+			return e.ErrUserDuplicate
+		}
+	}
+
+	return err
 }

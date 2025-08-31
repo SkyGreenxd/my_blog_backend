@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/internal/repository"
 	"my_blog_backend/pkg/e"
@@ -27,11 +26,7 @@ func (s *CategoryService) Create(ctx context.Context, req *CreateCategoryReq) (s
 
 	categoryEntity, err := s.categoryRepo.Create(ctx, newCategory)
 	if err != nil {
-		if errors.Is(err, e.ErrCategoryIsExists) {
-			return "", e.Wrap(op, err)
-		}
-
-		return "", e.Wrap(op, e.ErrInternalServer)
+		return "", e.Wrap(op, err)
 	}
 
 	return categoryEntity.Name, nil
@@ -42,7 +37,7 @@ func (s *CategoryService) GetAll(ctx context.Context) ([]*GetAllCategoriesRes, e
 
 	categories, err := s.categoryRepo.ListAll(ctx)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	result := make([]*GetAllCategoriesRes, len(categories))
@@ -62,11 +57,7 @@ func (s *CategoryService) Update(ctx context.Context, req *UpdateCategoryReq) (*
 
 	category, err := s.categoryRepo.GetBySlug(ctx, req.CategorySlug)
 	if err != nil {
-		if errors.Is(err, e.ErrCategoryNotFound) {
-			return nil, e.Wrap(op, e.ErrCategoryNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	if req.NewCategoryName == nil && req.NewCategorySlug == nil {
@@ -87,7 +78,7 @@ func (s *CategoryService) Update(ctx context.Context, req *UpdateCategoryReq) (*
 
 	updCategory, err := s.categoryRepo.Update(ctx, category)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return ToUpdateCategoryRes(updCategory), nil
@@ -102,23 +93,11 @@ func (s *CategoryService) Delete(ctx context.Context, req *DeleteCategoryReq) er
 
 	category, err := s.categoryRepo.GetBySlug(ctx, req.CategorySlug)
 	if err != nil {
-		if errors.Is(err, e.ErrCategoryNotFound) {
-			return e.Wrap(op, e.ErrCategoryNotFound)
-		}
-
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	if err := s.categoryRepo.Delete(ctx, category.ID); err != nil {
-		if errors.Is(err, e.ErrCategoryNotFound) {
-			return e.Wrap(op, e.ErrCategoryNotFound)
-		}
-
-		if errors.Is(err, e.ErrCategoryInUse) {
-			return e.Wrap(op, e.ErrCategoryInUse)
-		}
-
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	return nil

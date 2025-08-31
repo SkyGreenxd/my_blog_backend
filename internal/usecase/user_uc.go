@@ -41,20 +41,12 @@ func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*
 
 	err := s.userRepo.ExistsByEmailOrUsername(ctx, userDto.Email, userDto.Username)
 	if err != nil {
-		if errors.Is(err, e.ErrUsernameIsExists) {
-			return nil, e.Wrap(op, e.ErrUsernameIsExists)
-		}
-
-		if errors.Is(err, e.ErrEmailIsExists) {
-			return nil, e.Wrap(op, e.ErrEmailIsExists)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	hash, err := s.hashManager.HashPassword(userDto.Password)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	newUser := domain.NewUser(userDto.Username, userDto.Email, hash)
@@ -65,7 +57,7 @@ func (s *UserService) CreateUser(ctx context.Context, userDto *CreateUserReq) (*
 
 	userEntity, err := s.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toUserResponse(userEntity), nil
@@ -79,19 +71,21 @@ func (s *UserService) LoginUser(ctx context.Context, userDto *LoginUserReq) (*Lo
 		if errors.Is(err, e.ErrUserNotFound) {
 			return nil, e.Wrap(op, e.ErrInvalidCredentials)
 		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+
+		return nil, e.Wrap(op, err)
 	}
 
 	if err := s.hashManager.Compare(userDto.Password, user.PasswordHash); err != nil {
 		if errors.Is(err, e.ErrMismatchedHashAndPassword) {
 			return nil, e.Wrap(op, e.ErrInvalidCredentials)
 		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+
+		return nil, e.Wrap(op, err)
 	}
 
 	jwtStruct, refreshToken, refreshTokenHash, err := s.generateTokens(user.ID, user.Email, user.Role)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	session, err := s.sessionRepo.Create(ctx, domain.NewSession(
@@ -100,10 +94,7 @@ func (s *UserService) LoginUser(ctx context.Context, userDto *LoginUserReq) (*Lo
 		time.Now().UTC().Add(refreshTokenTTL)),
 	)
 	if err != nil {
-		if errors.Is(err, e.ErrRefreshTokenHashDuplicate) {
-			return nil, e.Wrap(op, e.ErrRefreshTokenHashDuplicate)
-		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toLoginUserResponse(user, session, jwtStruct, refreshToken), nil
@@ -114,10 +105,7 @@ func (s *UserService) GetUserById(ctx context.Context, id uint) (*UserRes, error
 
 	user, err := s.getUser(ctx, UserFilter{Id: &id})
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.Wrap(op, e.ErrUserNotFound)
-		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toUserResponse(user), nil
@@ -128,11 +116,7 @@ func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*
 
 	user, err := s.getUser(ctx, UserFilter{Username: &username})
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.Wrap(op, e.ErrUserNotFound)
-		}
-
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toUserResponse(user), nil
@@ -143,10 +127,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userId uint, req *UpdateUs
 
 	user, err := s.getUser(ctx, UserFilter{Id: &userId})
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.Wrap(op, e.ErrUserNotFound)
-		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	if req.Username == nil && req.Email == nil {
@@ -157,12 +138,15 @@ func (s *UserService) UpdateUser(ctx context.Context, userId uint, req *UpdateUs
 		if err := user.ChangeUsername(*req.Username); err != nil {
 			return nil, e.Wrap(op, e.ErrUsernameIsSame)
 		}
+
 		user.Username = *req.Username
 	}
+
 	if req.Email != nil {
 		if err := user.ChangeEmail(*req.Email); err != nil {
 			return nil, e.Wrap(op, e.ErrEmailIsSame)
 		}
+
 		user.Email = *req.Email
 	}
 
@@ -172,7 +156,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userId uint, req *UpdateUs
 
 	updateUser, err := s.userRepo.Update(ctx, user)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toUserResponse(updateUser), nil
@@ -183,10 +167,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userId uint, changePas
 
 	user, err := s.getUser(ctx, UserFilter{Id: &userId})
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return e.Wrap(op, e.ErrUserNotFound)
-		}
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	if err := s.hashManager.Compare(changePassword.OldPassword, user.PasswordHash); err != nil {
@@ -194,23 +175,22 @@ func (s *UserService) ChangePassword(ctx context.Context, userId uint, changePas
 			return e.Wrap(op, e.ErrInvalidCredentials)
 		}
 
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
+	}
+
+	if err := s.hashManager.Compare(changePassword.NewPassword, user.PasswordHash); err == nil {
+		return e.Wrap(op, e.ErrPasswordIsSame)
 	}
 
 	newPassHash, err := s.hashManager.HashPassword(changePassword.NewPassword)
 	if err != nil {
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
-	if err := user.ChangePassword(newPassHash); err != nil {
-		if errors.Is(err, e.ErrPasswordIsSame) {
-			return e.Wrap(op, e.ErrPasswordIsSame)
-		}
-		return e.Wrap(op, e.ErrInternalServer)
-	}
+	user.PasswordHash = newPassHash
 
 	if _, err := s.userRepo.Update(ctx, user); err != nil {
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	return nil
@@ -227,25 +207,22 @@ func (s *UserService) RefreshSession(ctx context.Context, userRefreshToken strin
 			errors.Is(err, e.ErrSessionExpired):
 			return nil, e.Wrap(op, e.ErrUnauthorized)
 		default:
-			return nil, e.Wrap(op, e.ErrInternalServer)
+			return nil, e.Wrap(op, err)
 		}
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, oldSession.Id); err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	user, err := s.userRepo.GetById(ctx, oldSession.UserId)
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.Wrap(op, e.ErrUserNotFound)
-		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	jwtStruct, refreshToken, refreshTokenHash, err := s.generateTokens(user.ID, user.Email, user.Role)
 	if err != nil {
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	newSession, err := s.sessionRepo.Create(ctx, domain.NewSession(
@@ -254,10 +231,7 @@ func (s *UserService) RefreshSession(ctx context.Context, userRefreshToken strin
 		time.Now().UTC().Add(refreshTokenTTL)),
 	)
 	if err != nil {
-		if errors.Is(err, e.ErrRefreshTokenHashDuplicate) {
-			return nil, e.Wrap(op, e.ErrRefreshTokenHashDuplicate)
-		}
-		return nil, e.Wrap(op, e.ErrInternalServer)
+		return nil, e.Wrap(op, err)
 	}
 
 	return toLoginUserResponse(user, newSession, jwtStruct, refreshToken), nil
@@ -274,12 +248,12 @@ func (s *UserService) LogoutUser(ctx context.Context, userRefreshToken string) e
 			errors.Is(err, e.ErrSessionExpired):
 			return e.Wrap(op, e.ErrUnauthorized)
 		default:
-			return e.Wrap(op, e.ErrInternalServer)
+			return e.Wrap(op, err)
 		}
 	}
 
 	if err := s.sessionRepo.RevokeSession(ctx, session.Id); err != nil {
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	return nil
@@ -290,11 +264,7 @@ func (s *UserService) SetAdminRole(ctx context.Context, userId uint) error {
 
 	user, err := s.userRepo.GetById(ctx, userId)
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return e.Wrap(op, e.ErrUserNotFound)
-		}
-
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	if err := user.SetAdminRole(); err != nil {
@@ -302,7 +272,7 @@ func (s *UserService) SetAdminRole(ctx context.Context, userId uint) error {
 	}
 
 	if _, err := s.userRepo.Update(ctx, user); err != nil {
-		return e.Wrap(op, e.ErrInternalServer)
+		return e.Wrap(op, err)
 	}
 
 	return nil
@@ -342,6 +312,7 @@ func (s *UserService) generateTokens(userId uint, email string, role domain.Role
 
 type UserFilter struct {
 	Id       *uint
+	Email    *string
 	Username *string
 }
 
@@ -351,8 +322,13 @@ func (s *UserService) getUser(ctx context.Context, filter UserFilter) (*domain.U
 		return handleUserError(user, err)
 	}
 
+	if filter.Email != nil {
+		user, err := s.userRepo.GetByEmail(ctx, *filter.Email)
+		return handleUserError(user, err)
+	}
+
 	if filter.Username != nil {
-		user, err := s.userRepo.GetByEmail(ctx, *filter.Username)
+		user, err := s.userRepo.GetByUsername(ctx, *filter.Username)
 		return handleUserError(user, err)
 	}
 
@@ -361,10 +337,6 @@ func (s *UserService) getUser(ctx context.Context, filter UserFilter) (*domain.U
 
 func handleUserError(user *domain.User, err error) (*domain.User, error) {
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			return nil, e.ErrUserNotFound
-		}
-
 		return nil, err
 	}
 
@@ -373,6 +345,7 @@ func handleUserError(user *domain.User, err error) (*domain.User, error) {
 
 func toUserResponse(user *domain.User) *UserRes {
 	return &UserRes{
+		Id:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
 		Role:     user.Role,
