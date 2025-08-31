@@ -69,7 +69,6 @@ func (h *Handler) getCurrentUser(c *gin.Context) {
 	c.JSON(http.StatusOK, delivery.ToUserRes(user))
 }
 
-// TODO: должны еще выводиться в будущем посты пользователя
 func (h *Handler) getUserById(c *gin.Context) {
 	idStr := c.Param("id")
 	userId, err := strconv.Atoi(idStr)
