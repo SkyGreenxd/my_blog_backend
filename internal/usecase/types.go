@@ -42,6 +42,7 @@ type LoginUserReq struct {
 }
 
 type UserRes struct {
+	Id       uint
 	Username string
 	Email    string
 	Role     domain.Role
@@ -91,16 +92,14 @@ type GetAllCategoriesRes struct {
 }
 
 type ArticleRes struct {
-	ArticleId    uint
-	UserId       uint
-	Username     string
-	Title        string
-	Content      string
-	CategoryName string
-	CategorySlug string
+	ArticleId uint
+	Title     string
+	Content   string
+	Author    UserRes
+	Category  CategoryRes
 }
 
-type GetArticlesByUserRes struct {
+type GetArticles struct {
 	Articles []*ArticleRes
 }
 
@@ -119,25 +118,9 @@ type CreateArticleRes struct {
 	CategorySlug string
 }
 
-type GetArticleRes struct {
-	Title        string
-	Content      string
-	CategoryName string
-	CategorySlug string
-	Username     string
-}
-
 type UpdateUserReq struct {
 	Username *string
 	Email    *string
-}
-
-type GetAllArticlesRes struct {
-	Title        string
-	Content      string
-	AuthorID     uint
-	CategorySlug string
-	CategoryName string
 }
 
 type UpdateArticleReq struct {
@@ -161,4 +144,9 @@ type CategoryRes struct {
 	CategoryName string
 	CategorySlug string
 	CategoryId   uint
+}
+
+type DeleteArticleReq struct {
+	UserId    uint
+	ArticleId uint
 }
