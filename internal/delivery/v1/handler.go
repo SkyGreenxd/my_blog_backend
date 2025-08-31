@@ -38,12 +38,12 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 		{
 			// users.GET("/:id", h.getUserById)
 			users.GET("/:username", h.getUserByUsername)
-			users.GET("/:username/articles", h.getArticlesByUsername) // TODO: проверить
+			users.GET("/:username/articles", h.getArticlesByUsername)
 
 			users.Use(h.middleware.AuthMiddleware())
 			{
 				users.GET("/me", h.getCurrentUser)
-				users.GET("/me/articles", h.getArticlesByUserId) //TODO: проверить
+				users.GET("/me/articles", h.getArticlesByUserId)
 				users.PATCH("/me/update", h.updateUser)
 				users.PATCH("me/admin", h.setAdminRole)
 			}
@@ -52,7 +52,7 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 		categories := v1.Group("/categories")
 		{
 			categories.GET("", h.GetAllCategories)
-			categories.GET("/:slug/articles", h.getArticlesByCategorySlug) // TODO: проверить
+			categories.GET("/:slug/articles", h.getArticlesByCategorySlug)
 
 			categories.Use(h.middleware.AuthMiddleware())
 			{
@@ -64,14 +64,14 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 
 		articles := v1.Group("/articles")
 		{
-			articles.GET("/:id", h.getArticleByID) //TODO: проверить
-			articles.GET("", h.getAllArticles)     //TODO: проверить
+			articles.GET("/:id", h.getArticleByID)
+			articles.GET("", h.getAllArticles)
 
 			articles.Use(h.middleware.AuthMiddleware())
 			{
-				articles.POST("", h.createArticle)       // TODO: проверить
-				articles.PATCH("/:id", h.updateArticle)  // TODO: проверить
-				articles.DELETE("/:id", h.deleteArticle) // TODO: проверить
+				articles.POST("", h.createArticle)
+				articles.PATCH("/:id", h.updateArticle)
+				articles.DELETE("/:id", h.deleteArticle)
 			}
 		}
 	}
