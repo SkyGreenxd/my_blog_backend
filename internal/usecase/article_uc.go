@@ -190,6 +190,22 @@ func (s *ArticleService) Update(ctx context.Context, req *UpdateArticleReq) (*Up
 	return toUpdateArticleRes(updArticle), nil
 }
 
+func (s *ArticleService) GetAll(ctx context.Context) (*GetArticles, error) {
+	const op = "ArticleService.GetAll"
+
+	articles, err := s.articleRepo.ListAll(ctx)
+	if err != nil {
+		return nil, e.Wrap(op, err)
+	}
+
+	res := make([]*ArticleRes, len(articles))
+	for i, article := range articles {
+		res[i] = toArticleRes(&article)
+	}
+
+	return toGetArticlesByUserRes(res), nil
+}
+
 func toCategoryRes(category *domain.Category) *CategoryRes {
 	return &CategoryRes{
 		CategoryId:   category.ID,
