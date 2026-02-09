@@ -1,12 +1,13 @@
 package token
 
 import (
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"my_blog_backend/internal/domain"
 	"my_blog_backend/pkg/e"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type UserClaims struct {

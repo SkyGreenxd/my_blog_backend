@@ -54,13 +54,15 @@ var (
 	ErrRefreshTokenInvalid       = errors.New("refresh token is invalid")
 
 	// Общие ошибки
-	ErrPermissionDenied   = errors.New("permission denied")
-	ErrUnauthorized       = errors.New("unauthorized")
-	ErrParseFailed        = errors.New("parse failed")
-	ErrTokenInvalid       = errors.New("token is invalid")
-	ErrInternalServer     = errors.New("internal server error")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrNoDataToUpdate     = errors.New("no data to update")
+	ErrPermissionDenied    = errors.New("permission denied")
+	ErrUnauthorized        = errors.New("unauthorized")
+	ErrParseFailed         = errors.New("parse failed")
+	ErrTokenInvalid        = errors.New("token is invalid")
+	ErrInternalServer      = errors.New("internal server error")
+	ErrInvalidCredentials  = errors.New("invalid credentials")
+	ErrNoDataToUpdate      = errors.New("no data to update")
+	ErrInternalServerError = errors.New("internal server error")
+	ErrBadRequest          = errors.New("bad request")
 )
 
 func Wrap(msg string, err error) error {

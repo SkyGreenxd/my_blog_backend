@@ -3,8 +3,9 @@ package hash
 import (
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"my_blog_backend/pkg/e"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type BcryptHashManager struct {
