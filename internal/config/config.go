@@ -1,38 +1,45 @@
 package config
 
 import (
-	"log"
-	"my_blog_backend/pkg/e"
+	"os"
 	"time"
-
-	"github.com/joho/godotenv"
-	"github.com/spf13/viper"
 )
 
-func LoadEnv() error {
-	if err := godotenv.Load(); err != nil {
-		return e.Wrap("error loading .env file", err)
-	}
+const (
+	defaultPort         = "8080"
+	defaultReadTimeout  = 5 * time.Second
+	defaultWriteTimeout = 10 * time.Second
+)
 
-	return nil
+type HttpServerCfg struct {
+	Port         string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
 }
 
-type HttpServer struct {
-	Port         string        `mapstructure:"HTTP_PORT"`
-	ReadTimeout  time.Duration `mapstructure:"HTTP_READ_TIMEOUT"`
-	WriteTimeout time.Duration `mapstructure:"HTTP_WRITE_TIMEOUT"`
-}
-
-func LoadHttpServerConfig() HttpServer {
-	v := viper.New()
-
-	// Берём переменные из окружения (godotenv уже их загрузил)
-	v.AutomaticEnv()
-
-	var cfg HttpServer
-	if err := v.Unmarshal(&cfg); err != nil {
-		log.Fatalf("failed to unmarshal HttpServer config: %v", err)
+func LoadHttpServerConfig() *HttpServerCfg {
+	port := os.Getenv("HTTP_PORT")
+	if port == "" {
+		port = defaultPort
 	}
 
-	return cfg
+	return &HttpServerCfg{
+		Port:         port,
+		ReadTimeout:  getEnvAsDuration("HTTP_READ_TIMEOUT", defaultReadTimeout),
+		WriteTimeout: getEnvAsDuration("HTTP_WRITE_TIMEOUT", defaultWriteTimeout),
+	}
+}
+
+func getEnvAsDuration(key string, fallback time.Duration) time.Duration {
+	valStr := os.Getenv(key)
+	if valStr == "" {
+		return fallback
+	}
+
+	duration, err := time.ParseDuration(valStr)
+	if err != nil {
+		return fallback
+	}
+
+	return duration
 }

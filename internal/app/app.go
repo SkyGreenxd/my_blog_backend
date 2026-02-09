@@ -20,21 +20,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	jwtTTL = 15 * time.Minute
-)
-
 func Run() {
-	if err := config.LoadEnv(); err != nil {
-		log.Fatal(err)
-	}
 	secret := os.Getenv("SECRET")
 	if secret == "" {
 		log.Fatal("SECRET must be set")
 	}
 
 	delivery.RegisterCustomValidators()
-
 	pgDatabase, err := postgres.Connect()
 	if err != nil {
 		log.Fatal(err)
@@ -45,15 +37,29 @@ func Run() {
 		}
 	}()
 
+	if err := pgDatabase.RunMigrations(); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
+
 	articleRepo := postgres.NewArticleRepository(pgDatabase.Db)
 	categoryRepo := postgres.NewCategoryRepository(pgDatabase.Db)
 	sessionRepo := postgres.NewSessionRepository(pgDatabase.Db)
 	userRepo := postgres.NewUserRepository(pgDatabase.Db)
 
+	jwtTTLStr := os.Getenv("TOKEN_TTL")
+	if jwtTTLStr == "" {
+		log.Fatal("TOKEN_TTL must be set")
+	}
+
+	jwtTTL, err := time.ParseDuration(jwtTTLStr)
+	if err != nil {
+		log.Fatalf("failed to parse TOKEN_TTL: %v", err)
+	}
+
 	tokenManager := token.NewTokenManager(secret, jwtTTL)
 	hashManager, err := hash.NewBcryptHashManager(bcrypt.DefaultCost)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to create hash manager: %v", err)
 	}
 
 	articleService := usecase.NewArticleService(articleRepo, userRepo, categoryRepo)
@@ -65,17 +71,14 @@ func Run() {
 	handler := v1.NewHandler(services, middleware)
 
 	r := gin.Default()
-	api := r.Group("")
-	handler.Init(api)
+	handler.Init(r)
 
 	serverCfg := config.LoadHttpServerConfig()
 	srv := server.NewServer(r, serverCfg)
 
-	// 9. Контекст для graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	// 10. Запуск сервера в горутине
 	go func() {
 		log.Printf("starting server on port %s", serverCfg.Port)
 		if err := srv.Run(); err != nil && err != http.ErrServerClosed {
@@ -83,7 +86,6 @@ func Run() {
 		}
 	}()
 
-	// 11. Ожидание сигнала завершения
 	<-ctx.Done()
 	log.Println("shutting down server...")
 

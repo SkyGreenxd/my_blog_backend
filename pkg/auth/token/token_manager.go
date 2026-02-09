@@ -10,7 +10,7 @@ import (
 	"my_blog_backend/pkg/e"
 	"strconv"
 	"time"
-
+	
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -29,18 +29,18 @@ func NewTokenManager(secretKey string, duration time.Duration) *TokenManager {
 func (manager *TokenManager) NewJWT(userID uint, email string, role domain.Role) (*usecase.TokenResponse, error) {
 	const op = "TokenManager.NewJWT"
 	expiresAt := time.Now().Add(manager.duration)
-
+	
 	claims, err := NewUserClaims(userID, email, role, expiresAt)
 	if err != nil {
 		return nil, e.Wrap(op, err)
 	}
-
+	
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(manager.secretKey))
 	if err != nil {
 		return nil, e.Wrap(op, err)
 	}
-
+	
 	return &usecase.TokenResponse{
 		Token:     tokenString,
 		ExpiresAt: expiresAt,
@@ -50,11 +50,11 @@ func (manager *TokenManager) NewJWT(userID uint, email string, role domain.Role)
 func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.AuthenticatedUser, error) {
 	const op = "tokenManager.VerifyJWT"
 	claims := &UserClaims{}
-
+	
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		return []byte(manager.secretKey), nil
 	}
-
+	
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		claims,
@@ -63,11 +63,11 @@ func (manager *TokenManager) VerifyJWT(tokenString string) (*usecase.Authenticat
 	if err != nil {
 		return nil, e.Wrap(op, e.ErrParseFailed)
 	}
-
+	
 	if !token.Valid {
 		return nil, e.Wrap(op, e.ErrTokenInvalid)
 	}
-
+	
 	return claimsToAuthPrincipal(claims)
 }
 
@@ -77,7 +77,7 @@ func (manager *TokenManager) NewRefreshToken() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-
+	
 	token := base64.URLEncoding.EncodeToString(b)
 	hashed := manager.HashRefreshToken(token)
 	return token, hashed, nil
@@ -91,16 +91,17 @@ func (manager *TokenManager) HashRefreshToken(token string) string {
 
 func claimsToAuthPrincipal(claims *UserClaims) (*usecase.AuthenticatedUser, error) {
 	const op = "tokenManager.claimsToAuthPrincipal"
+	
 	userId, err := strconv.ParseUint(claims.Subject, 10, 64)
 	if err != nil {
 		return nil, e.Wrap(op, err)
 	}
-
+	
 	authPrincipal := &usecase.AuthenticatedUser{
 		ID:    uint(userId),
 		Email: claims.Email,
 		Role:  claims.Role,
 	}
-
+	
 	return authPrincipal, nil
 }
