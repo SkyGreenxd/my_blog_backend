@@ -3,18 +3,30 @@ package v1
 import (
 	"log"
 	"my_blog_backend/internal/delivery"
+	"my_blog_backend/pkg/e"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+// @Summary		Create Category
+// @Tags			categories
+// @Description	Create a new category (Admin only)
+// @Accept			json
+// @Produce		json
+// @Param			input	body		delivery.CreateCategoryReq	true	"Category data"
+// @Success		200		{object}	map[string]interface{}
+// @Failure		400		{object}	delivery.ErrResponse
+// @Failure		401		{object}	delivery.ErrResponse
+// @Failure		403		{object}	delivery.ErrResponse
+// @Router			/categories [post]
 func (h *Handler) CreateCategory(c *gin.Context) {
 	userId, exists := c.Get("user_id")
 	if !exists {
 		if c.GetHeader("Authorization") == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			ErrorToHttpRes(e.ErrUnauthorized, c)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID not found in context"})
+			ErrorToHttpRes(e.ErrInternalServer, c)
 		}
 		return
 	}
@@ -28,7 +40,7 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 	var req delivery.CreateCategoryReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Println(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		ErrorToHttpRes(e.ErrBadRequest, c)
 		return
 	}
 
@@ -41,13 +53,24 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Category": newCategory})
 }
 
+// @Summary		Delete Category
+// @Tags			categories
+// @Description	Delete a category by its slug (Admin only)
+// @Accept			json
+// @Produce		json
+// @Param			slug	path		string	true	"Category Slug"
+// @Success		200		{object}	map[string]interface{}
+// @Failure		400		{object}	delivery.ErrResponse
+// @Failure		401		{object}	delivery.ErrResponse
+// @Failure		403		{object}	delivery.ErrResponse
+// @Router			/categories/{slug} [delete]
 func (h *Handler) DeleteCategory(c *gin.Context) {
 	userId, exists := c.Get("user_id")
 	if !exists {
 		if c.GetHeader("Authorization") == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			ErrorToHttpRes(e.ErrUnauthorized, c)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID not found in context"})
+			ErrorToHttpRes(e.ErrInternalServer, c)
 		}
 		return
 	}
@@ -67,13 +90,25 @@ func (h *Handler) DeleteCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"deleted": "true"})
 }
 
+// @Summary		Update Category
+// @Tags			categories
+// @Description	Update an existing category (Admin only)
+// @Accept			json
+// @Produce		json
+// @Param			slug	path		string						true	"Category Slug"
+// @Param			input	body		delivery.UpdateCategoryReq	true	"New category data"
+// @Success		200		{object}	map[string]interface{}
+// @Failure		400		{object}	delivery.ErrResponse
+// @Failure		401		{object}	delivery.ErrResponse
+// @Failure		403		{object}	delivery.ErrResponse
+// @Router			/categories/{slug} [patch]
 func (h *Handler) UpdateCategory(c *gin.Context) {
 	userId, exists := c.Get("user_id")
 	if !exists {
 		if c.GetHeader("Authorization") == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			ErrorToHttpRes(e.ErrUnauthorized, c)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID not found in context"})
+			ErrorToHttpRes(e.ErrInternalServer, c)
 		}
 		return
 	}
@@ -88,7 +123,7 @@ func (h *Handler) UpdateCategory(c *gin.Context) {
 	categorySlug := c.Param("slug")
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Println(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		ErrorToHttpRes(e.ErrBadRequest, c)
 		return
 	}
 
@@ -101,10 +136,18 @@ func (h *Handler) UpdateCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Category": category})
 }
 
+// @Summary		Get All Categories
+// @Tags			categories
+// @Description	Get a list of all categories
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	map[string]interface{}
+// @Router			/categories [get]
 func (h *Handler) GetAllCategories(c *gin.Context) {
 	categories, err := h.services.CategoryService.GetAll(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		ErrorToHttpRes(e.ErrInternalServer, c)
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"categories": categories})

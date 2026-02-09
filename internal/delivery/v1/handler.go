@@ -4,6 +4,10 @@ import (
 	"my_blog_backend/internal/usecase"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "my_blog_backend/docs"
 )
 
 type Handler struct {
@@ -19,7 +23,7 @@ func NewHandler(services *usecase.Services, middleware *Middleware) *Handler {
 }
 
 func (h *Handler) Init(r *gin.Engine) {
-	v1 := r.Group("/v1")
+	v1 := r.Group("/api/v1")
 	{
 		auth := v1.Group("/auth")
 		{
@@ -74,5 +78,7 @@ func (h *Handler) Init(r *gin.Engine) {
 				articles.DELETE("/:id", h.deleteArticle)
 			}
 		}
+
+		v1.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 }
