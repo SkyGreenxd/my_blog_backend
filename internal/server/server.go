@@ -4,20 +4,19 @@ import (
 	"context"
 	"my_blog_backend/internal/config"
 	"net/http"
-	"os"
 )
 
 type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(handler http.Handler, httpServer config.HttpServer) *Server {
+func NewServer(handler http.Handler, serverCfg *config.HttpServerCfg) *Server {
 	return &Server{
 		httpServer: &http.Server{
-			Addr:         ":" + os.Getenv("HTTP_PORT"),
+			Addr:         ":" + serverCfg.Port,
 			Handler:      handler,
-			ReadTimeout:  httpServer.ReadTimeout,
-			WriteTimeout: httpServer.WriteTimeout,
+			ReadTimeout:  serverCfg.ReadTimeout,
+			WriteTimeout: serverCfg.WriteTimeout,
 		},
 	}
 }

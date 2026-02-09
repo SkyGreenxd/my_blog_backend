@@ -18,8 +18,8 @@ func NewHandler(services *usecase.Services, middleware *Middleware) *Handler {
 	}
 }
 
-func (h *Handler) Init(api *gin.RouterGroup) {
-	v1 := api.Group("/v1")
+func (h *Handler) Init(r *gin.Engine) {
+	v1 := r.Group("/v1")
 	{
 		auth := v1.Group("/auth")
 		{
